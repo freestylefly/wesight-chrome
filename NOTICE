@@ -1,0 +1,10 @@
+WeSight 发布助手
+Copyright 2026 WeSight contributors
+
+Product architecture and platform-adapter research referenced MultiPost-Extension:
+https://github.com/leaperone/MultiPost-Extension
+Copyright its contributors, licensed under the Apache License 2.0.
+
+Referenced source: src/sync/common.ts, src/sync/article/bilibili.ts, and the dynamic image-upload portion of src/sync/article/csdn.ts. Those upload and draft contracts were adapted for task-scoped local assets, explicit status reporting, and manual final publication.
+
+No hardcoded CSDN signing key or automatic-publish implementation from the reference project is included.

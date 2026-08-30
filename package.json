@@ -1,0 +1,62 @@
+{
+  "name": "wesight-publish-assistant",
+  "displayName": "WeSight 发布助手",
+  "version": "0.1.0",
+  "description": "Prepare Obsidian articles for manual publishing on multiple platforms.",
+  "author": "WeSight",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "dev": "plasmo dev --target=chrome-mv3",
+    "build": "pnpm run build:chrome && pnpm run build:edge",
+    "build:chrome": "plasmo build --target=chrome-mv3",
+    "build:edge": "plasmo build --target=edge-mv3",
+    "package": "pnpm run package:chrome && pnpm run package:edge",
+    "package:chrome": "plasmo package --target=chrome-mv3",
+    "package:edge": "plasmo package --target=edge-mv3",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "dependencies": {
+    "@plasmohq/storage": "^1.15.0",
+    "lucide-react": "^0.468.0",
+    "plasmo": "0.90.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "manifest": {
+    "manifest_version": 3,
+    "name": "WeSight 发布助手",
+    "short_name": "WeSight 发布",
+    "description": "将 Obsidian 文章准备到多个内容平台，最终发布由你确认。",
+    "permissions": [
+      "storage",
+      "tabs",
+      "scripting",
+      "tabGroups"
+    ],
+    "host_permissions": [
+      "http://127.0.0.1/*",
+      "https://www.zhihu.com/*",
+      "https://zhuanlan.zhihu.com/*",
+      "https://www.csdn.net/*",
+      "https://editor.csdn.net/*",
+      "https://mp.csdn.net/*",
+      "https://passport.csdn.net/*",
+      "https://juejin.cn/*",
+      "https://passport.juejin.cn/*",
+      "https://member.bilibili.com/*",
+      "https://api.bilibili.com/*",
+      "https://passport.bilibili.com/*"
+    ]
+  }
+}

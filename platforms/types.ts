@@ -1,0 +1,47 @@
+import type { PlatformId, PublishAssetV1, PublishTaskV1 } from "~types/protocol"
+
+export interface AccountDetection {
+  loggedIn: boolean
+  message?: string
+}
+
+export interface PrepareDraftContext {
+  task: PublishTaskV1
+  getAssetData: (asset: PublishAssetV1) => Promise<string>
+  uploadProgress?: {
+    complete: (asset: PublishAssetV1) => void
+    fail: (asset: PublishAssetV1) => void
+  }
+  pageBridge?: {
+    fillEditor: (input: {
+      platformId: PlatformId
+      title: string
+      html: string
+      markdown: string
+    }) => Promise<void>
+    uploadAsset: (platformId: PlatformId, asset: PublishAssetV1) => Promise<string>
+  }
+}
+
+export interface PrepareDraftResult {
+  draftUrl: string
+  warnings: string[]
+}
+
+export interface PlatformAdapter {
+  id: PlatformId
+  title: string
+  editorUrl: string
+  titleLimit: number
+  detectAccount(): Promise<AccountDetection>
+  prepareDraft(context: PrepareDraftContext): Promise<PrepareDraftResult>
+  retry(context: PrepareDraftContext): Promise<PrepareDraftResult>
+  dispose(): void
+}
+
+export class PlatformPageChangedError extends Error {
+  constructor(platform: string, control: string) {
+    super(`${platform} 页面结构可能已更新，未找到${control}`)
+    this.name = "PlatformPageChangedError"
+  }
+}
