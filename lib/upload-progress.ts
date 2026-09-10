@@ -9,7 +9,18 @@ export interface UploadProgressController {
 }
 
 export function uploadAssetsForPlatform(platformId: PlatformId, task: PublishTaskV1): PublishAssetV1[] {
-  if (platformId === "bilibili-article") return task.assets
+  if (platformId === "xiaohongshu" || platformId === "weibo-post" || platformId === "jike-post") return task.assets
+  if (["bilibili-article", "toutiao", "weibo-article"].includes(platformId)) {
+    const referenced = task.assets.filter(asset => {
+      const token = `wesight-asset://${asset.id}`
+      return task.article.html.includes(token) || task.article.markdown.includes(token)
+    })
+    const cover = task.article.coverAssetId
+      ? task.assets.find(asset => asset.id === task.article.coverAssetId)
+      : undefined
+    if (platformId === "bilibili-article") return task.assets
+    return cover && !referenced.some(asset => asset.id === cover.id) ? [...referenced, cover] : referenced
+  }
 
   const assets = task.assets.filter(asset => {
     const token = `wesight-asset://${asset.id}`

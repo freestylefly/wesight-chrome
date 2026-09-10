@@ -1,7 +1,7 @@
 {
   "name": "wesight-publish-assistant",
   "displayName": "WeSight 发布助手",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Prepare Obsidian articles for manual publishing on multiple platforms.",
   "author": "WeSight",
   "license": "AGPL-3.0-or-later",
@@ -56,7 +56,17 @@
       "https://passport.juejin.cn/*",
       "https://member.bilibili.com/*",
       "https://api.bilibili.com/*",
-      "https://passport.bilibili.com/*"
+      "https://passport.bilibili.com/*",
+      "https://mp.toutiao.com/*",
+      "https://sso.toutiao.com/*",
+      "https://card.weibo.com/*",
+      "https://weibo.com/*",
+      "https://www.weibo.com/*",
+      "https://passport.weibo.com/*",
+      "https://login.sina.com.cn/*",
+      "https://picupload.weibo.com/*",
+      "https://creator.xiaohongshu.com/*",
+      "https://web.okjike.com/*"
     ]
   }
 }

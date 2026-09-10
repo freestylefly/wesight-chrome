@@ -2,10 +2,21 @@ import { hmacSha256, randomHex, secureEqual, sha256 } from "~lib/crypto"
 import { getLocal, setLocal, STORAGE_KEYS, type PairingRecord } from "~lib/storage"
 import {
   isPublishTaskV1,
+  BRIDGE_CAPABILITIES,
+  PLATFORM_IDS,
   type PlatformTaskEventV1,
   type PublishAssetV1,
   type PublishTaskV1
 } from "~types/protocol"
+
+function extensionHeaders(pairing: PairingRecord): Record<string, string> {
+  return {
+    "X-WeSight-Client": pairing.clientId,
+    "X-WeSight-Platforms": PLATFORM_IDS.join(","),
+    "X-WeSight-Version": chrome.runtime.getManifest().version,
+    "X-WeSight-Capabilities": BRIDGE_CAPABILITIES.join(",")
+  }
+}
 
 function endpoint(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/$/, "")}${path}`
@@ -35,7 +46,8 @@ export async function pairWithBridge(baseUrl: string, pairToken: string): Promis
     method: "POST",
     headers: {
       "Authorization": `Bearer ${pairToken}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...extensionHeaders(pairing)
     },
     body: JSON.stringify({ clientId: pairing.clientId, secret: pairing.secret })
   })
@@ -47,7 +59,7 @@ export async function pairWithBridge(baseUrl: string, pairToken: string): Promis
 export async function pingBridge(pairing: PairingRecord): Promise<boolean> {
   try {
     const response = await fetch(endpoint(pairing.baseUrl, "/health"), {
-      headers: { "X-WeSight-Client": pairing.clientId }
+      headers: extensionHeaders(pairing)
     })
     return response.ok
   } catch {
@@ -65,11 +77,20 @@ export async function fetchTask(
   const response = await fetch(endpoint(baseUrl, `/v1/tasks/${encodeURIComponent(taskId)}`), {
     headers: {
       "Authorization": `Bearer ${taskToken}`,
-      "X-WeSight-Client": pairing.clientId
+      ...extensionHeaders(pairing)
     }
   })
   const body = await response.text()
-  if (!response.ok) throw new Error(`读取任务失败（HTTP ${response.status}）`)
+  if (!response.ok) {
+    let message = `读取任务失败（HTTP ${response.status}）`
+    try {
+      const parsed = JSON.parse(body) as { error?: unknown }
+      if (typeof parsed.error === "string" && parsed.error.trim()) message = parsed.error.trim()
+    } catch {
+      // Keep the HTTP fallback when the bridge did not return JSON.
+    }
+    throw new Error(message)
+  }
   const expectedSignature = await hmacSha256(pairing.secret, body)
   const signature = response.headers.get("X-WeSight-Signature") ?? ""
   if (!secureEqual(signature, expectedSignature)) throw new Error("任务签名校验失败")
@@ -91,7 +112,7 @@ export async function fetchAsset(
     {
       headers: {
         "Authorization": `Bearer ${taskToken}`,
-        "X-WeSight-Client": pairing.clientId
+        ...extensionHeaders(pairing)
       }
     }
   )
@@ -115,7 +136,7 @@ export async function postTaskEvent(
     headers: {
       "Authorization": `Bearer ${taskToken}`,
       "Content-Type": "application/json",
-      "X-WeSight-Client": pairing.clientId,
+      ...extensionHeaders(pairing),
       "X-WeSight-Signature": signature
     },
     body

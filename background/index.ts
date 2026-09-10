@@ -1,6 +1,7 @@
 import { fetchAsset, fetchTask, getPairing, pairWithBridge, pingBridge, postTaskEvent } from "~lib/bridge-client"
 import { writeLog } from "~lib/logs"
 import { focusOrOpenPlatformTab } from "~lib/open-platform-tab"
+import { taskForPlatform } from "~lib/platform-task"
 import { sendTabMessageWithRetry } from "~lib/tab-message"
 import {
   getLocal,
@@ -15,6 +16,7 @@ import {
   type TaskSummary
 } from "~lib/storage"
 import { PLATFORM_CONFIG } from "~platforms/config"
+import { runXiaohongshuPageTask } from "~platforms/xiaohongshu-runner"
 import {
   fillPlatformEditorInPage,
   uploadCsdnImageInPage,
@@ -39,6 +41,7 @@ interface RuntimeTask {
 }
 
 const runtimes = new Map<string, RuntimeTask>()
+const xiaohongshuRuns = new Set<number>()
 const TASK_ACCESS_KEY = "wesight_task_access_v1"
 
 function defaultAccounts(): AccountStateMap {
@@ -46,7 +49,8 @@ function defaultAccounts(): AccountStateMap {
 }
 
 async function getAccounts(): Promise<AccountStateMap> {
-  return (await getLocal<AccountStateMap>(STORAGE_KEYS.accountStates)) ?? defaultAccounts()
+  const stored = await getLocal<Partial<AccountStateMap>>(STORAGE_KEYS.accountStates)
+  return { ...defaultAccounts(), ...(stored ?? {}) }
 }
 
 async function updateAccount(platformId: PlatformId, state: "logged_in" | "login_required"): Promise<void> {
@@ -57,7 +61,14 @@ async function updateAccount(platformId: PlatformId, state: "logged_in" | "login
 
 async function getTaskSummary(taskId?: string): Promise<TaskSummary | null> {
   const summary = await getLocal<TaskSummary>(STORAGE_KEYS.currentTask)
-  return !taskId || summary?.taskId === taskId ? summary : null
+  if (!summary || (taskId && summary.taskId !== taskId)) return null
+  return {
+    ...summary,
+    platforms: {
+      ...createInitialPlatformStates([]),
+      ...summary.platforms
+    }
+  }
 }
 
 async function saveTaskSummary(summary: TaskSummary): Promise<void> {
@@ -124,7 +135,7 @@ async function reportStatus(
 
 async function sendPrepare(tabId: number, runtime: RuntimeTask, platformId: PlatformId): Promise<void> {
   await reportStatus(runtime, platformId, "filling", { tabId, message: "正在填充文章内容" })
-  const request: ContentRequest = { type: "PREPARE_DRAFT", task: runtime.task }
+  const request: ContentRequest = { type: "PREPARE_DRAFT", task: taskForPlatform(runtime.task, platformId) }
   try {
     await sendTabMessageWithRetry(() => chrome.tabs.sendMessage(tabId, request))
   } catch (error) {
@@ -133,6 +144,55 @@ async function sendPrepare(tabId: number, runtime: RuntimeTask, platformId: Plat
       message: `无法连接平台页面：${error instanceof Error ? error.message : String(error)}`
     })
   }
+}
+
+async function prepareXiaohongshuTab(tabId: number, runtime: RuntimeTask): Promise<void> {
+  if (xiaohongshuRuns.has(tabId)) return
+  xiaohongshuRuns.add(tabId)
+  await reportStatus(runtime, "xiaohongshu", "filling", {
+    tabId,
+    message: "正在准备小红书图文"
+  })
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: runXiaohongshuPageTask,
+      args: [taskForPlatform(runtime.task, "xiaohongshu")]
+    })
+    const result = results[0]?.result
+    if (!result) throw new Error("小红书页面执行器未返回结果")
+    if (result.kind === "login_required") {
+      await updateAccount("xiaohongshu", "login_required")
+      await reportStatus(runtime, "xiaohongshu", "login_required", {
+        tabId,
+        message: result.message
+      })
+      return
+    }
+    await updateAccount("xiaohongshu", "logged_in")
+    await reportStatus(runtime, "xiaohongshu", "ready", {
+      tabId,
+      draftUrl: result.draftUrl,
+      warnings: result.warnings,
+      message: result.warnings.length ? "内容已填充，请检查提示后发布" : "内容已准备，请检查后发布"
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await reportStatus(runtime, "xiaohongshu", "failed", { tabId, message })
+    await writeLog("error", "xiaohongshu", message)
+  } finally {
+    xiaohongshuRuns.delete(tabId)
+  }
+}
+
+async function prepareXiaohongshuOnCompletedTab(tabId: number, url?: string): Promise<void> {
+  if (!url || !url.startsWith("https://creator.xiaohongshu.com/")) return
+  const summary = await getTaskSummary()
+  const state = summary?.platforms.xiaohongshu
+  if (!summary || !state || state.tabId !== tabId) return
+  if (["filling", "ready", "cancelled"].includes(state.status)) return
+  const runtime = await ensureRuntime(summary.taskId).catch(() => null)
+  if (runtime) await prepareXiaohongshuTab(tabId, runtime)
 }
 
 async function createPlatformTabs(runtime: RuntimeTask): Promise<void> {
@@ -205,6 +265,10 @@ async function startTask(handoff: Extract<ExtensionRequest, { type: "BRIDGE_HAND
     await saveTaskSummary(summary)
   }
   await pingBridge(pairing)
+  if (handoff.openTask) {
+    await openTaskTabs(task.taskId)
+    return
+  }
   if (handoff.openPlatform) {
     if (!task.targets.includes(handoff.openPlatform)) throw new Error("该平台不在当前任务中")
     await openPlatformTab(task.taskId, handoff.openPlatform)
@@ -297,6 +361,7 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       await openTaskTabs(message.taskId)
       return true
     case "PLATFORM_PAGE_READY": {
+      if (message.platformId === "xiaohongshu") return false
       const summary = await getTaskSummary()
       const tabId = sender.tab?.id
       if (!summary || tabId === undefined || !summary.platforms[message.platformId]) return false
@@ -355,6 +420,21 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
         message: message.message
       })
       await writeLog("error", message.platformId, message.message)
+      return true
+    }
+    case "XIAOHONGSHU_UPLOAD_PROGRESS": {
+      const runtime = await ensureRuntime(message.taskId)
+      const summary = await getTaskSummary(message.taskId)
+      const tabId = sender.tab?.id
+      if (!summary || tabId === undefined || summary.platforms.xiaohongshu.tabId !== tabId) {
+        throw new Error("小红书上传进度来源无效")
+      }
+      const total = Math.max(0, message.total)
+      const completed = Math.min(total, Math.max(0, message.completed))
+      await reportStatus(runtime, "xiaohongshu", "filling", {
+        tabId,
+        message: `正在上传图片 ${completed}/${total}`
+      })
       return true
     }
     case "GET_ASSET_DATA": {
@@ -488,4 +568,9 @@ chrome.tabs.onRemoved.addListener(tabId => {
     const runtime = await ensureRuntime(summary.taskId).catch(() => null)
     if (runtime) await reportStatus(runtime, entry.platformId, "cancelled", { message: "平台标签页已关闭" })
   })()
+})
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== "complete") return
+  void prepareXiaohongshuOnCompletedTab(tabId, tab.url)
 })

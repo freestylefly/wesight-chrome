@@ -5,6 +5,10 @@ Product architecture and platform-adapter research referenced MultiPost-Extensio
 https://github.com/leaperone/MultiPost-Extension
 Copyright its contributors, licensed under the Apache License 2.0.
 
-Referenced source: src/sync/common.ts, src/sync/article/bilibili.ts, and the dynamic image-upload portion of src/sync/article/csdn.ts. Those upload and draft contracts were adapted for task-scoped local assets, explicit status reporting, and manual final publication.
+Referenced source: src/sync/common.ts, src/sync/account/rednote.ts, src/sync/dynamic/rednote.ts, src/sync/article/bilibili.ts, src/sync/article/toutiao.ts, src/sync/article/weibo.ts, src/sync/article/xarticle.ts, and the dynamic image-upload portion of src/sync/article/csdn.ts.
+
+The Toutiao adapter was changed to use task-scoped local assets, verified platform image URLs, explicit progress, and manual final publication. The Weibo adapter was changed to use three-way bounded uploads, 16:9 cover cropping, a v5-create-only v3 fallback, same-draft save retry, and a recorded editor URL.
+
+The Xiaohongshu adapter was changed to use task-scoped local assets, ordered multi-file upload, preview-count verification, explicit progress, defensive title handling, and manual final publication. The reference project's automatic-publish branch is excluded.
 
 No hardcoded CSDN signing key or automatic-publish implementation from the reference project is included.

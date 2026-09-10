@@ -30,9 +30,12 @@ async function handoff(): Promise<void> {
     taskToken,
     pairToken: fragment.get("pairToken") ?? undefined,
     retryPlatform: query.get("retryPlatform") as BridgeHandoff["retryPlatform"] ?? undefined,
-    openPlatform: query.get("openPlatform") as BridgeHandoff["openPlatform"] ?? undefined
+    openPlatform: query.get("openPlatform") as BridgeHandoff["openPlatform"] ?? undefined,
+    openTask: query.get("openTask") === "1"
   }
-  render(payload.openPlatform ? "正在打开已准备的平台草稿…" : "正在连接 WeSight 并打开平台编辑页…")
+  render(payload.openTask
+    ? "正在打开本次任务的平台标签组…"
+    : payload.openPlatform ? "正在打开已准备的平台草稿…" : "正在连接 WeSight 并打开平台编辑页…")
   const request: ExtensionRequest = { type: "BRIDGE_HANDOFF", handoff: payload }
   const response = await chrome.runtime.sendMessage<ExtensionRequest, ExtensionResponse>(request)
   if (!response?.ok) {
@@ -40,9 +43,11 @@ async function handoff(): Promise<void> {
     return
   }
   history.replaceState(null, "", `${location.pathname}${location.search}`)
-  render(payload.openPlatform
-    ? "已切换到对应平台草稿。可以关闭此页面。"
-    : "平台编辑页已打开。可以关闭此页面，并回到 Obsidian 查看进度。")
+  render(payload.openTask
+    ? "已切换到本次任务的平台标签组。可以关闭此页面。"
+    : payload.openPlatform
+      ? "已切换到对应平台草稿。可以关闭此页面。"
+      : "平台编辑页已打开。可以关闭此页面，并回到 Obsidian 查看进度。")
 }
 
 void handoff().catch(error => render(error instanceof Error ? error.message : String(error), true))

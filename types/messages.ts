@@ -10,6 +10,7 @@ export type ExtensionRequest =
   | { type: "PLATFORM_RESULT"; taskId: string; platformId: PlatformId; warnings: string[]; draftUrl?: string }
   | { type: "PLATFORM_LOGIN_REQUIRED"; taskId: string; platformId: PlatformId; message: string }
   | { type: "PLATFORM_FAILED"; taskId: string; platformId: PlatformId; message: string }
+  | { type: "XIAOHONGSHU_UPLOAD_PROGRESS"; taskId: string; completed: number; total: number }
   | { type: "GET_ASSET_DATA"; taskId: string; asset: PublishAssetV1 }
   | { type: "FILL_PLATFORM_EDITOR"; platformId: PlatformId; title: string; html: string; markdown: string }
   | { type: "UPLOAD_PLATFORM_ASSET"; taskId: string; platformId: PlatformId; asset: PublishAssetV1 }

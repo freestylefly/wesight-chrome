@@ -17,7 +17,15 @@ export const config: PlasmoCSConfig = {
     "https://juejin.cn/*",
     "https://passport.juejin.cn/*",
     "https://member.bilibili.com/*",
-    "https://passport.bilibili.com/*"
+    "https://passport.bilibili.com/*",
+    "https://mp.toutiao.com/*",
+    "https://sso.toutiao.com/*",
+    "https://card.weibo.com/*",
+    "https://weibo.com/*",
+    "https://www.weibo.com/*",
+    "https://passport.weibo.com/*",
+    "https://login.sina.com.cn/*",
+    "https://web.okjike.com/*"
   ],
   run_at: "document_idle"
 }
@@ -90,9 +98,13 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
     const uploadProgress: UploadProgressController | null = uploadAssets.length
       ? createUploadProgress(adapter.title, uploadAssets.length)
       : null
+    let uploadFailed = false
     const assetProgress = {
       complete: (_asset: PublishAssetV1) => uploadProgress?.complete(),
-      fail: (asset: PublishAssetV1) => uploadProgress?.fail(asset.fileName)
+      fail: (asset: PublishAssetV1) => {
+        uploadFailed = true
+        uploadProgress?.fail(asset.fileName)
+      }
     }
     try {
       const result = await adapter.prepareDraft({
@@ -138,6 +150,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       return result
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
+      if (!uploadFailed) uploadProgress?.remove()
       await send({ type: "PLATFORM_FAILED", taskId: message.task.taskId, platformId, message: errorMessage })
       throw error
     }
