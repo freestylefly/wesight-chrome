@@ -1,5 +1,7 @@
 import { PLATFORM_CONFIG } from "~platforms/config"
+import { postVideoAsset } from "~lib/post-media"
 import { fillEditable, fillTextControl, loginPageDetected, waitForAny } from "~platforms/dom"
+import { uploadPostVideo } from "~platforms/post-video"
 import { PlatformPageChangedError, type PlatformAdapter, type PrepareDraftContext } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
 
@@ -215,13 +217,14 @@ function escapeHtml(value: string): string {
 
 async function prepareDraft(context: PrepareDraftContext) {
   disposed = false
+  const video = postVideoAsset(context.task)
   if (loginRequired()) throw new Error("请先登录即刻，登录完成后从发布助手重试")
   const editor = await waitForEditor()
   if (!editor) throw new PlatformPageChangedError(config.label, "动态正文编辑器")
 
   const content = context.task.article.markdown.trim()
   if (Array.from(content).length > config.titleLimit) {
-    throw new Error(`即刻动态正文超过 ${config.titleLimit} 个字符，请回到 Obsidian 精简后重试`)
+    throw new Error(`即刻动态正文超过 ${config.titleLimit} 个字符，请精简文案后重试`)
   }
   fillComposer(editor, content)
   await delay(450)
@@ -229,7 +232,17 @@ async function prepareDraft(context: PrepareDraftContext) {
   const actual = editorText(editor).replace(/\s+/g, "")
   if (expected && !actual.includes(expected)) throw new Error("即刻动态正文填充失败，请重试")
 
-  await uploadImages(context)
+  if (video) {
+    await uploadPostVideo({
+      context,
+      asset: video,
+      platform: "即刻",
+      editor,
+      cancelled: () => disposed
+    })
+  } else {
+    await uploadImages(context)
+  }
   const circle = context.task.targetOptions?.jikePost?.circle?.trim() ?? ""
   const circleSelected = circle ? await chooseCircle(circle) : false
   const warnings = circle && !circleSelected

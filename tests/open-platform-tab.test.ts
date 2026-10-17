@@ -32,18 +32,15 @@ describe("open prepared platform tab", () => {
   const tabsUpdate = vi.fn()
   const tabsCreate = vi.fn()
   const windowsUpdate = vi.fn()
-  const groupsUpdate = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal("chrome", {
       tabs: { get: tabsGet, update: tabsUpdate, create: tabsCreate },
-      windows: { update: windowsUpdate },
-      tabGroups: { update: groupsUpdate }
+      windows: { update: windowsUpdate }
     })
     tabsUpdate.mockResolvedValue(undefined)
     windowsUpdate.mockResolvedValue(undefined)
-    groupsUpdate.mockResolvedValue(undefined)
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -60,7 +57,6 @@ describe("open prepared platform tab", () => {
       created: false,
       currentUrl: "https://zhuanlan.zhihu.com/p/123/edit"
     })
-    expect(groupsUpdate).toHaveBeenCalledWith(8, { collapsed: false })
     expect(windowsUpdate).toHaveBeenCalledWith(6, { focused: true })
     expect(tabsUpdate).toHaveBeenCalledWith(31, { active: true })
     expect(tabsCreate).not.toHaveBeenCalled()
@@ -81,6 +77,19 @@ describe("open prepared platform tab", () => {
     expect(tabsCreate).toHaveBeenCalledWith({
       url: "https://mp.csdn.net/mp_blog/creation/editor/456",
       active: true
+    })
+  })
+
+  test("reopens a draft in the handoff window when one is provided", async () => {
+    tabsGet.mockRejectedValue(new Error("No tab with id: 32"))
+    tabsCreate.mockResolvedValue({ id: 42, windowId: 9 })
+
+    await focusOrOpenPlatformTab(summary(), "csdn", 9)
+
+    expect(tabsCreate).toHaveBeenCalledWith({
+      url: "https://mp.csdn.net/mp_blog/creation/editor/456",
+      active: true,
+      windowId: 9
     })
   })
 })

@@ -29,11 +29,16 @@ describe("publish task protocol", () => {
     expect(states.juejin.status).toBe("queued")
     expect(states.zhihu.status).toBe("cancelled")
   })
-  test("keeps protocol v1 while accepting all nine platform ids", () => {
+  test("keeps protocol v1 while accepting article and dynamic platform ids", () => {
     expect(PLATFORM_IDS).toEqual([
-      "zhihu", "csdn", "juejin", "bilibili-article", "toutiao", "weibo-article", "xiaohongshu", "weibo-post", "jike-post"
+      "zhihu", "csdn", "juejin", "bilibili-article", "toutiao", "weibo-article", "x-article", "xiaohongshu", "weibo-post", "jike-post", "x-post"
     ])
     expect(isPublishTaskV1({ ...task(), targets: [...PLATFORM_IDS] })).toBe(true)
+  })
+  test("accepts X dynamic drafts while keeping final publication manual", () => {
+    expect(isPublishTaskV1({ ...task(), targets: ["x-post"], targetOptions: { xPost: { includeTitle: false } } })).toBe(true)
+    expect(isPublishTaskV1({ ...task(), targets: ["x-post"], targetOptions: { xPost: { includeTitle: "yes" } } })).toBe(false)
+    expect(isPublishTaskV1({ ...task(), targets: ["x-post"], behavior: { finalAction: "publish", groupTabs: true } })).toBe(false)
   })
   test("accepts isolated payloads for every selected platform", () => {
     const asset = { id: "image-1", fileName: "image.png", mimeType: "image/png", size: 3, sha256: "a".repeat(64) }

@@ -1,14 +1,29 @@
 import type { PlatformId, PublishAssetV1, PublishTaskV1 } from "~types/protocol"
+import { xImagePlan } from "~lib/article-preparation"
+import { supportedXImages } from "~lib/x-image-policy"
+import { supportedXPostImages } from "~lib/x-post-content"
 
 const UPLOAD_PROGRESS_ID = "wesight-publish-upload-progress"
 
 export interface UploadProgressController {
+  stage(message: string): void
   complete(): void
+  skip(): void
   fail(fileName: string): void
   remove(): void
 }
 
 export function uploadAssetsForPlatform(platformId: PlatformId, task: PublishTaskV1): PublishAssetV1[] {
+  if (platformId === "x-post") return supportedXPostImages(task.assets).images
+  if (platformId === "x-article") {
+    const sources = Array.from(new DOMParser().parseFromString(task.article.html, "text/html").querySelectorAll("img"), image => image.getAttribute("src") ?? "")
+    const cover = task.article.coverAssetId ? `wesight-asset://${task.article.coverAssetId}` : null
+    const supported = supportedXImages(sources, cover, task.assets)
+    const plan = xImagePlan(supported.sources, supported.cover)
+    const used = new Set(task.targetOptions?.xArticle?.skipExcessImages ? supported.sources.slice(0, plan.bodyLimit) : supported.sources)
+    if (supported.cover) used.add(supported.cover)
+    return task.assets.filter(asset => used.has(`wesight-asset://${asset.id}`))
+  }
   if (platformId === "xiaohongshu" || platformId === "weibo-post" || platformId === "jike-post") return task.assets
   if (["bilibili-article", "toutiao", "weibo-article"].includes(platformId)) {
     const referenced = task.assets.filter(asset => {
@@ -26,13 +41,13 @@ export function uploadAssetsForPlatform(platformId: PlatformId, task: PublishTas
     const token = `wesight-asset://${asset.id}`
     return task.article.html.includes(token) || task.article.markdown.includes(token)
   })
-  if (platformId !== "zhihu" || !task.article.coverAssetId) return assets
+  if (!["zhihu", "x-article"].includes(platformId) || !task.article.coverAssetId) return assets
 
   const cover = task.assets.find(asset => asset.id === task.article.coverAssetId)
   return cover && !assets.some(asset => asset.id === cover.id) ? [...assets, cover] : assets
 }
 
-export function createUploadProgress(platformLabel: string, total: number): UploadProgressController {
+export function createUploadProgress(platformLabel: string, total: number, mediaLabel = "图片"): UploadProgressController {
   document.querySelector(`#${UPLOAD_PROGRESS_ID}`)?.remove()
 
   const card = document.createElement("aside")
@@ -58,7 +73,7 @@ export function createUploadProgress(platformLabel: string, total: number): Uplo
   })
 
   const heading = document.createElement("div")
-  heading.textContent = "WeSight · 图片上传"
+  heading.textContent = `WeSight · ${mediaLabel}上传`
   Object.assign(heading.style, { fontWeight: "700", marginBottom: "5px" })
 
   const detail = document.createElement("div")
@@ -97,14 +112,22 @@ export function createUploadProgress(platformLabel: string, total: number): Uplo
       return
     }
     detail.textContent = completed >= total
-      ? `${platformLabel}：图片上传完成 ${completed}/${total}`
+      ? `${platformLabel}：${mediaLabel}上传完成 ${completed}/${total}`
       : `${platformLabel}：正在上传 ${completed}/${total}`
   }
   render()
 
   return {
+    stage(message: string) {
+      heading.textContent = "WeSight · 同步进度"
+      detail.textContent = `${platformLabel}：${message}`
+    },
     complete() {
       completed = Math.min(total, completed + 1)
+      render()
+    },
+    skip() {
+      total = Math.max(completed, total - 1)
       render()
     },
     fail(fileName: string) {

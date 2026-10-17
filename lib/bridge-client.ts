@@ -1,7 +1,8 @@
+import { isWeSightUser } from "~types/auth"
 import { hmacSha256, randomHex, secureEqual, sha256 } from "~lib/crypto"
-import { getLocal, setLocal, STORAGE_KEYS, type PairingRecord } from "~lib/storage"
+import { getLocal, parseMembershipSummary, setLocal, STORAGE_KEYS, type AccessRecord, type AccessState, type PairingRecord } from "~lib/storage"
 import {
-  isPublishTaskV1,
+  getPublishTaskValidationError,
   BRIDGE_CAPABILITIES,
   PLATFORM_IDS,
   type PlatformTaskEventV1,
@@ -57,13 +58,20 @@ export async function pairWithBridge(baseUrl: string, pairToken: string): Promis
 }
 
 export async function pingBridge(pairing: PairingRecord): Promise<boolean> {
+  const controller = new AbortController()
+  const timeout = globalThis.setTimeout(() => controller.abort(), 4_000)
   try {
     const response = await fetch(endpoint(pairing.baseUrl, "/health"), {
-      headers: extensionHeaders(pairing)
+      headers: extensionHeaders(pairing),
+      signal: controller.signal
     })
-    return response.ok
+    if (!response.ok) return false
+    const health = await response.json() as { protocolVersion?: unknown; paired?: unknown }
+    return health.protocolVersion === 1 && health.paired === true
   } catch {
     return false
+  } finally {
+    globalThis.clearTimeout(timeout)
   }
 }
 
@@ -95,8 +103,9 @@ export async function fetchTask(
   const signature = response.headers.get("X-WeSight-Signature") ?? ""
   if (!secureEqual(signature, expectedSignature)) throw new Error("任务签名校验失败")
   const parsed: unknown = JSON.parse(body)
-  if (!isPublishTaskV1(parsed)) throw new Error("任务协议无效或已经过期")
-  return parsed
+  const validationError = getPublishTaskValidationError(parsed)
+  if (validationError) throw new Error(validationError)
+  return parsed as PublishTaskV1
 }
 
 export async function fetchAsset(
@@ -142,4 +151,26 @@ export async function postTaskEvent(
     body
   })
   if (!response.ok) throw new Error(`回传任务状态失败（HTTP ${response.status}）`)
+}
+
+const ACCESS_STATES: AccessState[] = ["login-required", "single-platform", "multi-platform"]
+
+/** Reads the WeSight membership limit from Obsidian. Returns null when Obsidian is unreachable. */
+export async function fetchAccess(pairing: PairingRecord): Promise<AccessRecord | null> {
+  let response: Response
+  try {
+    response = await fetch(endpoint(pairing.baseUrl, "/v1/access"), { headers: extensionHeaders(pairing) })
+  } catch {
+    return null
+  }
+  if (!response.ok) return null
+  const body = await response.text()
+  const expectedSignature = await hmacSha256(pairing.secret, body)
+  if (!secureEqual(response.headers.get("X-WeSight-Signature") ?? "", expectedSignature)) return null
+  const parsed = JSON.parse(body) as { state?: unknown; maxTargets?: unknown; user?: unknown; billing?: unknown }
+  if (!ACCESS_STATES.includes(parsed.state as AccessState)) return null
+  const maxTargets = parsed.maxTargets === null ? null : Number(parsed.maxTargets)
+  const billing = parseMembershipSummary(parsed.billing)
+  if (maxTargets !== null && (!Number.isInteger(maxTargets) || maxTargets < 0)) return null
+  return { state: parsed.state as AccessState, maxTargets, checkedAt: new Date().toISOString(), user: isWeSightUser(parsed.user) ? parsed.user : null, ...(billing ? { billing } : {}) }
 }

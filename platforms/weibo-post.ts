@@ -1,5 +1,7 @@
 import { PLATFORM_CONFIG } from "~platforms/config"
+import { postVideoAsset } from "~lib/post-media"
 import { fillEditable, fillTextControl, loginPageDetected, waitForAny } from "~platforms/dom"
+import { uploadPostVideo } from "~platforms/post-video"
 import { PlatformPageChangedError, type PlatformAdapter, type PrepareDraftContext } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
 
@@ -166,6 +168,7 @@ function escapeHtml(value: string): string {
 
 async function prepareDraft(context: PrepareDraftContext) {
   disposed = false
+  const video = postVideoAsset(context.task)
   if (loginRequired()) {
     return Promise.reject(new Error("请先登录微博，登录完成后从发布助手重试"))
   }
@@ -179,7 +182,7 @@ async function prepareDraft(context: PrepareDraftContext) {
     .join(" ")
   const content = [context.task.article.markdown.trim(), topics].filter(Boolean).join("\n\n")
   if (Array.from(content).length > config.titleLimit) {
-    throw new Error(`微博正文和话题合计超过 ${config.titleLimit} 个字符，请回到 Obsidian 精简后重试`)
+    throw new Error(`微博正文和话题合计超过 ${config.titleLimit} 个字符，请精简文案后重试`)
   }
   fillComposer(editor, content)
   await delay(500)
@@ -187,7 +190,17 @@ async function prepareDraft(context: PrepareDraftContext) {
   const actual = editorText(editor).replace(/\s+/g, " ").trim()
   if (expected && !actual.includes(expected)) throw new Error("微博正文填充失败，请重试")
 
-  await uploadImages(context)
+  if (video) {
+    await uploadPostVideo({
+      context,
+      asset: video,
+      platform: "微博",
+      editor,
+      cancelled: () => disposed
+    })
+  } else {
+    await uploadImages(context)
+  }
   await delay(800)
   return { draftUrl: location.href, warnings: [] }
 }

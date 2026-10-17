@@ -246,6 +246,26 @@ describe("new platform adapter fixtures", () => {
     expect(fetchMock.mock.calls.map(call => String(call[0])).some(url => url.includes("/v3/"))).toBe(false)
   })
 
+  test("saves paragraph spacing in the Weibo draft payload and preserves the shared article", async () => {
+    document.body.innerHTML = fixture("weibo")
+    const task = makeTask()
+    task.article.html = '<p>第一段。</p><p>第二段。</p><p><br></p><p>第三段。</p><pre><code>代码\n第二行</code></pre>'
+    const source = task.article.html
+    const saves: string[] = []
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes("/draft/create")) return new Response(JSON.stringify({ data: { id: "spacing" } }), { status: 200 })
+      if (url.includes("/draft/save")) {
+        saves.push(String((init!.body as FormData).get("content")))
+        return new Response(JSON.stringify({ code: saves.length === 1 ? 500001 : 100000 }), { status: 200 })
+      }
+      throw new Error(`unexpected fetch ${url}`)
+    })
+    await weiboAdapter.prepareDraft({ task, getAssetData: async () => "" })
+    expect(saves).toEqual(Array(2).fill('<p>第一段。</p><p><br></p><p>第二段。</p><p><br></p><p>第三段。</p><pre><code>代码\n第二行</code></pre>'))
+    expect(task.article.html).toBe(source)
+  })
+
   test("crops Weibo covers to 16:9", async () => {
     vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 1600, height: 1200, close: vi.fn() }))
     const drawImage = vi.fn()

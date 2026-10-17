@@ -1,3 +1,5 @@
+import { xArticleAdapter } from "~platforms/x-article"
+import { xPostAdapter } from "~platforms/x-post"
 import { bilibiliAdapter } from "~platforms/bilibili"
 import { csdnAdapter } from "~platforms/csdn"
 import { juejinAdapter } from "~platforms/juejin"
@@ -17,7 +19,9 @@ export const PLATFORM_ADAPTERS: Record<PlatformId, PlatformAdapter> = {
   "bilibili-article": bilibiliAdapter,
   toutiao: toutiaoAdapter,
   "weibo-article": weiboAdapter,
+  "x-article": xArticleAdapter,
   xiaohongshu: xiaohongshuAdapter,
   "weibo-post": weiboPostAdapter,
-  "jike-post": jikePostAdapter
+  "jike-post": jikePostAdapter,
+  "x-post": xPostAdapter
 }

@@ -16,6 +16,7 @@ export function taskForPlatform(task: PublishTaskV1, platformId: PlatformId): Pu
     ...task,
     article: payload.article,
     assets,
+    media: task.media && assets.some(asset => asset.id === task.media!.videoAssetId) ? task.media : undefined,
     targetOptions: payload.targetOptions
   }
 }

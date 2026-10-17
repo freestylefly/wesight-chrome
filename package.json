@@ -1,8 +1,8 @@
 {
   "name": "wesight-publish-assistant",
   "displayName": "WeSight 发布助手",
-  "version": "1.0.0",
-  "description": "Prepare Obsidian articles for manual publishing on multiple platforms.",
+  "version": "1.1.0",
+  "description": "Prepare article and social-post drafts from Obsidian, Markdown files, links, or the browser publish center for manual publishing.",
   "author": "WeSight",
   "license": "AGPL-3.0-or-later",
   "scripts": {
@@ -18,17 +18,24 @@
     "check": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.5.0",
     "@plasmohq/storage": "^1.15.0",
     "lucide-react": "^0.468.0",
+    "marked": "^14.1.4",
     "plasmo": "0.90.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "turndown": "^7.2.4",
+    "twitter-text": "3.1.0"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/turndown": "^5.0.6",
+    "@types/twitter-text": "3.1.10",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
@@ -37,12 +44,13 @@
     "manifest_version": 3,
     "name": "WeSight 发布助手",
     "short_name": "WeSight 发布",
-    "description": "将 Obsidian 文章准备到多个内容平台，最终发布由你确认。",
+    "description": "从 Obsidian、本地 Markdown 或文章链接导入，勾选平台一键准备草稿，最终发布由你确认。",
     "permissions": [
       "storage",
+      "alarms",
       "tabs",
       "scripting",
-      "tabGroups"
+      "declarativeNetRequestWithHostAccess"
     ],
     "host_permissions": [
       "http://127.0.0.1/*",
@@ -52,8 +60,10 @@
       "https://editor.csdn.net/*",
       "https://mp.csdn.net/*",
       "https://passport.csdn.net/*",
+      "https://g-api.csdn.net/*",
       "https://juejin.cn/*",
       "https://passport.juejin.cn/*",
+      "https://api.juejin.cn/*",
       "https://member.bilibili.com/*",
       "https://api.bilibili.com/*",
       "https://passport.bilibili.com/*",
@@ -66,7 +76,29 @@
       "https://login.sina.com.cn/*",
       "https://picupload.weibo.com/*",
       "https://creator.xiaohongshu.com/*",
-      "https://web.okjike.com/*"
+      "https://web.okjike.com/*",
+      "https://api.wesight.ai/*",
+      "https://x.com/*",
+      "https://api.x.com/*",
+      "https://twitter.com/*",
+      "https://upload.x.com/*",
+      "https://abs.twimg.com/responsive-web/client-web/*",
+      "https://abs.twimg.com/responsive-web/client-web-legacy/*",
+      "https://abs.twimg.com/x-web/x-web/*"
+    ],
+    "optional_host_permissions": [
+      "https://*/*",
+      "http://*/*"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "tabs/auth-callback.html"
+        ],
+        "matches": [
+          "https://api.wesight.ai/*"
+        ]
+      }
     ]
   }
 }

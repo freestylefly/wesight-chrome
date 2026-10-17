@@ -1,5 +1,7 @@
 import { PLATFORM_CONFIG } from "~platforms/config"
+import { postVideoAsset } from "~lib/post-media"
 import { fillTextControl, loginPageDetected, prepareArticle, waitForAny } from "~platforms/dom"
+import { uploadPostVideo } from "~platforms/post-video"
 import { PlatformPageChangedError, type PlatformAdapter, type PrepareDraftContext, type PrepareDraftResult } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
 
@@ -226,8 +228,19 @@ function formattedContent(context: PrepareDraftContext, body: string): string {
 
 async function prepare(context: PrepareDraftContext): Promise<PrepareDraftResult> {
   disposed = false
+  const video = postVideoAsset(context.task)
   const article = prepareArticle(context, new Map(), config.titleLimit, config.shortLabel)
-  await uploadImages(context)
+  if (video) {
+    await uploadPostVideo({
+      context,
+      asset: video,
+      platform: "小红书",
+      entryLabels: ["上传视频"],
+      cancelled: () => disposed
+    })
+  } else {
+    await uploadImages(context)
+  }
 
   const title = await waitForAny<HTMLInputElement | HTMLTextAreaElement>(TITLE_SELECTORS, 20_000)
   if (!title) throw new PlatformPageChangedError(config.label, "标题输入框")

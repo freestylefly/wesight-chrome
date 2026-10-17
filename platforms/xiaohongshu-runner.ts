@@ -11,6 +11,11 @@ export type XiaohongshuInjectedResult =
  * values.
  */
 export async function runXiaohongshuPageTask(task: PublishTaskV1): Promise<XiaohongshuInjectedResult> {
+  // Video tasks use the regular content-script adapter, which supports Blob
+  // transport. Keep this image-only serialized runner away from video files.
+  if (task.media?.videoAssetId || task.assets.some(asset => asset.mimeType.startsWith("video/"))) {
+    throw new Error("视频任务需要通过视频发布入口重试")
+  }
   const TITLE_LIMIT = 20
   const PREVIEW_SELECTORS = [
     ".img-preview-area .img-container",

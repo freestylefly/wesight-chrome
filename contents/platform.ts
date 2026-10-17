@@ -1,7 +1,8 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import { showReadyBanner } from "~lib/ready-banner"
 import { createUploadProgress, uploadAssetsForPlatform, type UploadProgressController } from "~lib/upload-progress"
-import { platformFromUrl } from "~platforms/config"
+import { isXPlatform, platformFromUrl } from "~platforms/config"
 import { PLATFORM_ADAPTERS } from "~platforms/index"
 import type { ContentRequest, ExtensionRequest, ExtensionResponse } from "~types/messages"
 import type { PlatformId, PublishAssetV1 } from "~types/protocol"
@@ -9,6 +10,7 @@ import type { PlatformId, PublishAssetV1 } from "~types/protocol"
 export const config: PlasmoCSConfig = {
   matches: [
     "https://www.zhihu.com/*",
+    "https://creator.xiaohongshu.com/*",
     "https://zhuanlan.zhihu.com/*",
     "https://www.csdn.net/*",
     "https://editor.csdn.net/*",
@@ -25,45 +27,11 @@ export const config: PlasmoCSConfig = {
     "https://www.weibo.com/*",
     "https://passport.weibo.com/*",
     "https://login.sina.com.cn/*",
-    "https://web.okjike.com/*"
+    "https://web.okjike.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*"
   ],
   run_at: "document_idle"
-}
-
-function showReadyBanner(warnings: string[]): void {
-  document.querySelector("#wesight-publish-upload-progress")?.remove()
-  document.querySelector("#wesight-publish-ready-banner")?.remove()
-  const banner = document.createElement("aside")
-  banner.id = "wesight-publish-ready-banner"
-  banner.setAttribute("role", "status")
-  Object.assign(banner.style, {
-    position: "fixed",
-    zIndex: "2147483647",
-    top: "16px",
-    right: "16px",
-    maxWidth: "360px",
-    padding: "12px 14px",
-    border: "1px solid rgba(217,119,87,.35)",
-    borderRadius: "10px",
-    background: "#fffaf7",
-    boxShadow: "0 12px 32px rgba(35,28,24,.18)",
-    color: "#3d2b24",
-    fontFamily: "-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif",
-    fontSize: "13px",
-    lineHeight: "1.5"
-  })
-  const title = document.createElement("strong")
-  title.textContent = "WeSight：内容已准备，请检查后发布"
-  title.style.display = "block"
-  banner.appendChild(title)
-  if (warnings.length) {
-    const detail = document.createElement("div")
-    detail.textContent = warnings[0] + (warnings.length > 1 ? `，另有 ${warnings.length - 1} 项提示` : "")
-    detail.style.marginTop = "4px"
-    detail.style.color = "#8a4b32"
-    banner.appendChild(detail)
-  }
-  document.body.appendChild(banner)
 }
 
 async function send(request: ExtensionRequest): Promise<unknown> {
@@ -72,12 +40,30 @@ async function send(request: ExtensionRequest): Promise<unknown> {
   return response.value
 }
 
-const platformId = platformFromUrl(location.href)
+const usedAdapters = new Set<PlatformId>()
+
+function requestPlatform(message: ContentRequest): PlatformId | null {
+  const current = platformFromUrl(location.href)
+  if (message.type !== "PREPARE_DRAFT") return current
+  if (message.platformId) {
+    if (message.platformId === current || (isXPlatform(current) && isXPlatform(message.platformId))) return message.platformId
+    throw new Error("当前页面与同步平台不匹配")
+  }
+  // Accept tasks from an older background instance while selecting the one X
+  // destination from the task, rather than a route captured before SPA navigation.
+  if (isXPlatform(current)) {
+    const targets = message.task.targets.filter(isXPlatform)
+    if (targets.length === 1) return targets[0]!
+  }
+  return current
+}
 
 chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResponse) => {
   void (async () => {
+    const platformId = requestPlatform(message)
     if (!platformId) throw new Error("当前页面不属于已支持的平台")
     const adapter = PLATFORM_ADAPTERS[platformId]
+    usedAdapters.add(platformId)
     if (message.type === "CHECK_ACCOUNT") return adapter.detectAccount()
     if (message.type === "SHOW_READY") {
       showReadyBanner(message.warnings)
@@ -95,12 +81,14 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       return { loginRequired: true }
     }
     const uploadAssets = uploadAssetsForPlatform(platformId, message.task)
-    const uploadProgress: UploadProgressController | null = uploadAssets.length
-      ? createUploadProgress(adapter.title, uploadAssets.length)
+    const uploadProgress: UploadProgressController | null = uploadAssets.length || platformId === "x-article" || platformId === "x-post"
+      ? createUploadProgress(adapter.title, uploadAssets.length, message.task.media?.videoAssetId ? "视频" : "图片")
       : null
+    let progressUpdates = Promise.resolve()
     let uploadFailed = false
     const assetProgress = {
       complete: (_asset: PublishAssetV1) => uploadProgress?.complete(),
+      skip: (_asset: PublishAssetV1) => uploadProgress?.skip(),
       fail: (asset: PublishAssetV1) => {
         uploadFailed = true
         uploadProgress?.fail(asset.fileName)
@@ -109,13 +97,29 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
     try {
       const result = await adapter.prepareDraft({
         task: message.task,
+        reportProgress: text => {
+          uploadProgress?.stage(text)
+          progressUpdates = progressUpdates.then(() => send({ type: "PLATFORM_PROGRESS", taskId: message.task.taskId, platformId, message: text })).then(() => undefined).catch(() => undefined)
+        },
         uploadProgress: assetProgress,
+        getAssetBlob: async (asset: PublishAssetV1) => {
+          const parts: ArrayBuffer[] = []
+          let offset = 0
+          while (offset < asset.size) {
+            const chunk = await send({ type: "GET_ASSET_CHUNK", taskId: message.task.taskId, assetId: asset.id, offset }) as { base64: string; end: number }
+            if (!Number.isSafeInteger(chunk.end) || chunk.end <= offset || chunk.end > asset.size || typeof chunk.base64 !== "string") throw new Error("视频附件分片读取失败")
+            parts.push(Uint8Array.from(atob(chunk.base64), char => char.charCodeAt(0)).buffer)
+            offset = chunk.end
+          }
+          return new Blob(parts, { type: asset.mimeType })
+        },
         getAssetData: async (asset: PublishAssetV1) => {
           const value = await send({ type: "GET_ASSET_DATA", taskId: message.task.taskId, asset })
           if (typeof value !== "string") throw new Error(`图片 ${asset.fileName} 数据无效`)
           return value
         },
         pageBridge: {
+          prepareXPost: async input => await send({ type: "PREPARE_X_POST_COMPOSER", input }) as import("~lib/x-post-composer").XPostComposerResult,
           fillEditor: async input => {
             await send({ type: "FILL_PLATFORM_EDITOR", ...input })
           },
@@ -139,16 +143,20 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
           }
         }
       })
-      showReadyBanner(result.warnings)
+      await progressUpdates
+      if (result.editorPending) uploadProgress?.remove()
+      else showReadyBanner(result.warnings)
       await send({
         type: "PLATFORM_RESULT",
         taskId: message.task.taskId,
         platformId,
         warnings: result.warnings,
-        draftUrl: result.draftUrl
+        draftUrl: result.draftUrl,
+        ...(result.editorPending ? { editorPending: true } : {})
       })
       return result
     } catch (error) {
+      await progressUpdates
       const errorMessage = error instanceof Error ? error.message : String(error)
       if (!uploadFailed) uploadProgress?.remove()
       await send({ type: "PLATFORM_FAILED", taskId: message.task.taskId, platformId, message: errorMessage })
@@ -166,10 +174,14 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
 // Register the receiver before announcing that the page is ready. The background
 // responds to PLATFORM_PAGE_READY immediately with PREPARE_DRAFT, so announcing
 // first can lose the initial task on a freshly opened editor tab.
-if (platformId) {
-  void send({ type: "PLATFORM_PAGE_READY", platformId, url: location.href }).catch(() => undefined)
+function announcePage(): void {
+  const platformId = platformFromUrl(location.href)
+  if (platformId) void send({ type: "PLATFORM_PAGE_READY", platformId, url: location.href }).catch(() => undefined)
 }
+announcePage()
+window.addEventListener("popstate", announcePage)
 
 window.addEventListener("pagehide", () => {
-  if (platformId) PLATFORM_ADAPTERS[platformId].dispose()
+  window.removeEventListener("popstate", announcePage)
+  for (const platformId of usedAdapters) PLATFORM_ADAPTERS[platformId].dispose()
 }, { once: true })

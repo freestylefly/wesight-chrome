@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ExternalLink, LoaderCircle, RefreshCw, Unplug } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, LayoutDashboard, LogIn, LoaderCircle, UserRound, RefreshCw, Unplug } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import logo from "data-base64:~assets/icon.png"
@@ -54,7 +54,8 @@ function App() {
   const progress = useMemo(() => {
     const task = state?.currentTask
     if (!task) return null
-    const selected = Object.values(task.platforms).filter(item => item.status !== "cancelled")
+    const selected = (task.targets ?? PLATFORM_IDS.filter(id => task.platforms[id].status !== "cancelled"))
+      .map(id => task.platforms[id])
     return { ready: selected.filter(item => item.status === "ready").length, total: selected.length }
   }, [state])
 
@@ -82,19 +83,33 @@ function App() {
     }
   }
 
+  const openPublishCenter = async () => {
+    try {
+      await request({ type: "OPEN_PUBLISH_CENTER" })
+      window.close()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+
   return <main className="popup-shell">
     <header className="brand-row">
       <img src={logo} alt="" />
       <div><h1>WeSight 发布助手</h1><p>多平台草稿准备</p></div>
-      <span className={`connection ${state?.connected ? "online" : ""}`}>
-        {state?.connected ? "已连接" : "未连接"}
-      </span>
+      {state?.auth.user ? <div className="popup-user" title={state.auth.user.nickname}>
+        {state.auth.user.avatarUrl ? <img src={state.auth.user.avatarUrl} alt="头像" /> : <UserRound />}
+        <span>{state.auth.user.nickname}</span>
+      </div> : <button className="popup-login" disabled={state?.auth.loginPending} onClick={() => {
+        void request({ type: "WESIGHT_LOGIN" }).then(refresh).catch(reason => setError(String(reason)))
+      }}><LogIn />{state?.auth.loginPending ? "登录中" : "登录"}</button>}
     </header>
 
-    {!state?.pairing ? <section className="empty-state">
+    <button className="primary-action center-action" onClick={() => void openPublishCenter()}><LayoutDashboard />打开发布中心</button>
+
+    {!state?.auth.user ? <section className="empty-state">
       <Unplug />
-      <h2>等待与 Obsidian 配对</h2>
-      <p>在 WeSight 的「多平台」页签选择平台并启动任务，浏览器会完成一次配对。</p>
+      <h2>登录 WeSight 后使用平台同步</h2>
+      <p>使用与 Obsidian 相同的 WeSight 账号登录，或从已配对的 Obsidian 打开发布中心。</p>
     </section> : <>
       <section className="account-card">
         <div className="section-title"><h2>平台登录状态</h2><button onClick={() => void refresh()} aria-label="刷新"><RefreshCw /></button></div>
@@ -110,7 +125,7 @@ function App() {
         <div className="task-heading"><div><small>当前任务</small><h2>{state.currentTask.title}</h2></div><strong>{progress?.ready ?? 0}/{progress?.total ?? 0}</strong></div>
         <div className="progress-track"><span style={{ width: `${progress?.total ? (progress.ready / progress.total) * 100 : 0}%` }} /></div>
         <div className="platform-list">
-          {PLATFORM_IDS.filter(id => state.currentTask!.platforms[id].status !== "cancelled").map(id => {
+          {(state.currentTask.targets ?? PLATFORM_IDS.filter(id => state.currentTask!.platforms[id].status !== "cancelled")).map(id => {
             const item = state.currentTask!.platforms[id]
             const retryable = item.status === "failed" || item.status === "login_required"
             return <div className="platform-row" key={id}>
@@ -120,8 +135,8 @@ function App() {
             </div>
           })}
         </div>
-        <button className="primary-action" onClick={() => void openTabs()}><ExternalLink />打开标签组</button>
-      </section> : <section className="empty-state compact"><h2>已完成配对</h2><p>从 Obsidian 发起任务后，进度会显示在这里。</p></section>}
+        <button className="primary-action" onClick={() => void openTabs()}><ExternalLink />打开全部草稿</button>
+      </section> : <section className="empty-state compact"><h2>文章准备就绪</h2><p>在发布中心开始同步后，进度会显示在这里。</p></section>}
     </>}
     {error && <div className="error-note">{error}</div>}
     <footer>正文与图片仅通过本机临时通道传输</footer>

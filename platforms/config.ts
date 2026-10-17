@@ -42,6 +42,12 @@ export const PLATFORM_CONFIG: Record<PlatformId, {
     editorUrl: "https://card.weibo.com/article/v5/editor",
     titleLimit: 32
   },
+  "x-article": {
+    label: "X 文章",
+    shortLabel: "X",
+    editorUrl: "https://x.com/compose/articles",
+    titleLimit: 100
+  },
   xiaohongshu: {
     label: "小红书图文",
     shortLabel: "小红书",
@@ -59,11 +65,35 @@ export const PLATFORM_CONFIG: Record<PlatformId, {
     shortLabel: "即刻",
     editorUrl: "https://web.okjike.com/",
     titleLimit: 2000
+  },
+  "x-post": {
+    label: "X 动态",
+    shortLabel: "X",
+    editorUrl: "https://x.com/compose/post",
+    titleLimit: 280
   }
 }
 
+export function isXPlatform(platformId: PlatformId | null | undefined): platformId is "x-article" | "x-post" {
+  return platformId === "x-article" || platformId === "x-post"
+}
+
+/** Article and dynamic publishing use the same signed-in platform account. */
+export function accountPlatformIds(platformId: PlatformId): readonly PlatformId[] {
+  if (isXPlatform(platformId)) return ["x-article", "x-post"]
+  if (platformId === "weibo-article" || platformId === "weibo-post") return ["weibo-article", "weibo-post"]
+  return [platformId]
+}
+
+/** Keep a task bound to its own X adapter while the single-page app changes routes. */
+export function platformForOwnedPage(reported: PlatformId, owner: PlatformId | undefined, url: string): PlatformId {
+  if (!isXPlatform(reported) || !isXPlatform(owner)) return reported
+  try { return isXPlatform(platformFromUrl(url)) ? owner : reported } catch { return reported }
+}
+
 export function platformFromUrl(url: string): PlatformId | null {
-  const host = new URL(url).hostname
+  const parsed = new URL(url)
+  const host = parsed.hostname
   if (host === "www.zhihu.com" || host === "zhuanlan.zhihu.com") return "zhihu"
   if (host === "www.csdn.net" || host === "editor.csdn.net" || host === "mp.csdn.net" || host === "passport.csdn.net") return "csdn"
   if (host === "juejin.cn" || host === "passport.juejin.cn") return "juejin"
@@ -73,6 +103,7 @@ export function platformFromUrl(url: string): PlatformId | null {
   if (host === "weibo.com" || host === "www.weibo.com") return "weibo-post"
   if (host === "passport.weibo.com" || host === "login.sina.com.cn") return "weibo-post"
   if (host === "creator.xiaohongshu.com") return "xiaohongshu"
+  if (host === "x.com" || host === "twitter.com") return /^\/compose\/articles(?:\/|$)/.test(parsed.pathname) ? "x-article" : "x-post"
   if (host === "web.okjike.com") return "jike-post"
   return null
 }

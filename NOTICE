@@ -12,3 +12,11 @@ The Toutiao adapter was changed to use task-scoped local assets, verified platfo
 The Xiaohongshu adapter was changed to use task-scoped local assets, ordered multi-file upload, preview-count verification, explicit progress, defensive title handling, and manual final publication. The reference project's automatic-publish branch is excluded.
 
 No hardcoded CSDN signing key or automatic-publish implementation from the reference project is included.
+
+The publish center bundles these libraries:
+- @mozilla/readability (https://github.com/mozilla/readability), Copyright Mozilla and Arc90 contributors, licensed under the Apache License 2.0.
+- marked (https://github.com/markedjs/marked), Copyright Christopher Jeffrey and MarkedJS contributors, licensed under the MIT License.
+- turndown (https://github.com/mixmark-io/turndown), Copyright Dom Christie, licensed under the MIT License.
+- twitter-text (https://github.com/twitter/twitter-text), Copyright Twitter, Inc. and contributors, licensed under the Apache License 2.0; used for X post length weighting.
+
+The publish center uses the Canghe green stylesheet and preview decoration structure from freestylefly/wesight-obsidian (AGPL-3.0-or-later). The X article adapter independently implements session-based image uploads and draft creation using X web endpoints, with no page-control automation or automatic publication. Protocol research included static inspection of the Chrome Web Store distribution of 爱贝壳内容同步助手 1.7.3 and the protocol documentation at https://github.com/kuangjiajia/kaitox-toolkit/blob/main/docs/x-article-publish-protocol.md. No bundled code from 爱贝壳 was copied.

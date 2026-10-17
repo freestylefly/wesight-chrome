@@ -25,6 +25,14 @@ function task(): PublishTaskV1 {
 }
 
 describe("upload progress", () => {
+  test("removes a skipped image from the upload total without reporting failure", () => {
+    const progress = createUploadProgress("X 文章", 3)
+    progress.complete()
+    progress.skip()
+    expect(document.querySelector("#wesight-publish-upload-progress")?.textContent).toContain("正在上传 1/2")
+    progress.complete()
+    expect(document.querySelector("#wesight-publish-upload-progress")?.textContent).toContain("图片上传完成 2/2")
+  })
   afterEach(() => {
     document.body.innerHTML = ""
   })
@@ -61,6 +69,7 @@ describe("upload progress", () => {
 
     expect(uploadAssetsForPlatform("csdn", fixture).map(asset => asset.fileName)).toEqual(["正文.png"])
     expect(uploadAssetsForPlatform("juejin", fixture).map(asset => asset.fileName)).toEqual(["正文.png"])
+    expect(uploadAssetsForPlatform("x-article", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
     expect(uploadAssetsForPlatform("zhihu", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
     expect(uploadAssetsForPlatform("bilibili-article", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
     expect(uploadAssetsForPlatform("toutiao", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
@@ -68,5 +77,12 @@ describe("upload progress", () => {
     expect(uploadAssetsForPlatform("xiaohongshu", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
     expect(uploadAssetsForPlatform("weibo-post", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
     expect(uploadAssetsForPlatform("jike-post", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
+  })
+
+  test("counts only supported X dynamic images, including picture-only posts", () => {
+    const fixture = task()
+    fixture.assets.push({ ...fixture.assets[0]!, id: "gif", fileName: "animation.gif", mimeType: "image/gif" })
+    expect(uploadAssetsForPlatform("x-post", fixture).map(asset => asset.fileName)).toEqual(["正文.png", "封面.png"])
+    expect(fixture.assets).toHaveLength(3)
   })
 })

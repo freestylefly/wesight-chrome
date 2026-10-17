@@ -4,6 +4,7 @@
  * v5-create-only fallback rules, stable draft URL reporting, and redacted errors.
  */
 import { replaceAssetTokens, sanitizePlatformHtml, truncateTitle } from "~lib/content"
+import { spaceWeiboParagraphs } from "~lib/weibo-content"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import { loginPageDetected, referencedAssets } from "~platforms/dom"
 import type { PlatformAdapter, PrepareDraftContext, PrepareDraftResult } from "~platforms/types"
@@ -266,7 +267,7 @@ async function prepare(context: PrepareDraftContext): Promise<PrepareDraftResult
   }
 
   const limited = truncateTitle(context.task.article.title, config.titleLimit)
-  const html = replaceWeiboImages(replaceAssetTokens(context.task.article.html, new Map()), uploaded)
+  const html = spaceWeiboParagraphs(replaceWeiboImages(replaceAssetTokens(context.task.article.html, new Map()), uploaded))
   let endpoint = ENDPOINTS[0]!
   let created: { id: string; payload: unknown }
   try {
