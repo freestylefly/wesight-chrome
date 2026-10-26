@@ -5,7 +5,7 @@
   "sourceCommit": "706cf54",
   "packageSha256": "6bd1b081e2b7605ec6f7de971c6952799c6c630055733daa120cbd13381eaf99",
   "submittedOn": "2026-10-26",
-  "lastVerifiedAt": "2026-10-26T23:22:37+08:00",
+  "lastVerifiedAt": "2026-10-26T23:39:08+08:00",
   "reviewStatus": "pending_review",
   "confirmation": "Your extension was submitted for review",
   "publishAutomaticallyAfterReview": true,
@@ -22,5 +22,32 @@
     "01-article-preview.png",
     "04-platform-copy.png",
     "02-markdown-editor.png"
+  ],
+  "lastSubmittedAt": "2026-10-26T23:39:08+08:00",
+  "submissionAttempt": 2,
+  "metadataCommit": "af3d0ef",
+  "supportEmail": "canghe0818@gmail.com",
+  "descriptionCharacters": 510,
+  "lastRejection": {
+    "referenceId": "Yellow Argon",
+    "violation": "Keyword Spam: excessive keywords in the Chinese description",
+    "violationDate": "2026-10-26",
+    "resolution": "Removed the platform-name list and shortened the description from 1267 to 510 characters; resubmitted the unchanged 1.1.1 package."
+  },
+  "reviewHistory": [
+    {
+      "attempt": 1,
+      "version": "1.1.1",
+      "submittedOn": "2026-10-26",
+      "outcome": "rejected",
+      "referenceId": "Yellow Argon"
+    },
+    {
+      "attempt": 2,
+      "version": "1.1.1",
+      "submittedAt": "2026-10-26T23:39:08+08:00",
+      "outcome": "pending_review",
+      "metadataCommit": "af3d0ef"
+    }
   ]
 }
