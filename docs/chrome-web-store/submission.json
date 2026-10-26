@@ -1,0 +1,26 @@
+{
+  "extensionId": "ocgepghgjgllnkhedapekeibaeklgoik",
+  "publisherId": "0fd889ee-c1af-4a3b-bc4a-59b60d1f4f71",
+  "version": "1.1.1",
+  "sourceCommit": "706cf54",
+  "packageSha256": "6bd1b081e2b7605ec6f7de971c6952799c6c630055733daa120cbd13381eaf99",
+  "submittedOn": "2026-10-26",
+  "lastVerifiedAt": "2026-10-26T23:22:37+08:00",
+  "reviewStatus": "pending_review",
+  "confirmation": "Your extension was submitted for review",
+  "publishAutomaticallyAfterReview": true,
+  "visibility": "public",
+  "regions": "all",
+  "containsInAppPurchases": true,
+  "category": "Tools",
+  "language": "zh-CN",
+  "privacyPolicyUrl": "https://github.com/freestylefly/wesight-chrome/blob/main/PRIVACY.md",
+  "dashboardStatusUrl": "https://chrome.google.com/webstore/devconsole/0fd889ee-c1af-4a3b-bc4a-59b60d1f4f71/ocgepghgjgllnkhedapekeibaeklgoik/edit/status",
+  "reviewTestAccess": "Reviewer Google OAuth self-registration and free single-platform sync; no shared membership credentials were provided.",
+  "screenshotOrder": [
+    "03-dynamic-preview.png",
+    "01-article-preview.png",
+    "04-platform-copy.png",
+    "02-markdown-editor.png"
+  ]
+}

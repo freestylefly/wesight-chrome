@@ -24,5 +24,6 @@
     "chromeBuild": "passed",
     "edgeBuild": "passed before final privacy link addition"
   },
-  "submissionStatus": "Prepared; publisher identity verification is required before store upload."
+  "submissionStatus": "Pending review; automatic publication after approval is enabled.",
+  "submissionRecord": "submission.json"
 }
