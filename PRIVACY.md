@@ -2,7 +2,7 @@
 
 生效日期：2026 年 10 月 26 日
 
-WeSight 发布助手由武汉苍何智联科技有限公司提供。本政策说明浏览器扩展在导入内容、准备平台草稿、登录及查询会员权益时如何处理数据。隐私与数据删除事宜可联系 [hello@wesight.ai](mailto:hello@wesight.ai)；功能支持也可通过 [GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues) 提交。请勿在公开 Issue 中提交令牌、密码、未公开正文或其他敏感信息。
+WeSight 发布助手由武汉苍何智联科技有限公司提供。本政策说明浏览器扩展在导入内容、准备平台草稿、登录及查询会员权益时如何处理数据。隐私与数据删除事宜可联系 [canghe0818@gmail.com](mailto:canghe0818@gmail.com)；功能支持也可通过 [GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues) 提交。请勿在公开 Issue 中提交令牌、密码、未公开正文或其他敏感信息。
 
 ## 1. 扩展的用途
 
@@ -64,7 +64,7 @@ X 动态通过 X 原生 Post 链接预填文案，并将图片交给 X 编辑器
 
 需要清除全部扩展本机数据时，可在 `chrome://extensions/` 中移除 WeSight 发布助手。浏览器会清理该扩展的存储；再次安装后需要重新登录和配对。移除扩展不会删除 Obsidian 原笔记、WeSight 云端账号，也不会删除各平台已经收到的素材、草稿或已发布内容。平台端内容请到相应平台删除。
 
-需要查询、更正或申请删除 WeSight 账号相关数据时，请发送邮件至 [hello@wesight.ai](mailto:hello@wesight.ai)，说明请求事项及可用于核验账号归属的信息。请勿发送密码、访问令牌、刷新令牌或配对密钥。运营方会在核验身份后处理请求，并说明适用的保留要求与处理结果。
+需要查询、更正或申请删除 WeSight 账号相关数据时，请发送邮件至 [canghe0818@gmail.com](mailto:canghe0818@gmail.com)，说明请求事项及可用于核验账号归属的信息。请勿发送密码、访问令牌、刷新令牌或配对密钥。运营方会在核验身份后处理请求，并说明适用的保留要求与处理结果。
 
 ## 7. Chrome Web Store 用户数据政策
 
@@ -77,5 +77,5 @@ The use and transfer of information received by WeSight Publish Assistant will a
 功能或数据处理方式变化时，我们会更新本政策及生效日期，并保持商店隐私披露与实际行为一致。涉及需要用户重新授权的变化，会通过适用的浏览器权限提示或产品说明告知。
 
 - 运营方：武汉苍何智联科技有限公司
-- 联系邮箱：[hello@wesight.ai](mailto:hello@wesight.ai)
+- 联系邮箱：[canghe0818@gmail.com](mailto:canghe0818@gmail.com)
 - 支持渠道：[GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues)

@@ -89,5 +89,5 @@ pnpm package
 
 - [隐私政策](PRIVACY.md)：数据用途、接收方、保存期限及删除方式。
 - [权限说明](PERMISSIONS.md)：各浏览器权限与网站访问权限的用途。
-- 功能反馈：[GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues)。隐私及账号数据请求可联系 [hello@wesight.ai](mailto:hello@wesight.ai)。
+- 功能反馈：[GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues)。隐私及账号数据请求可联系 [canghe0818@gmail.com](mailto:canghe0818@gmail.com)。
 - [1.1.1 更新说明](docs/releases/1.1.1.md)：Chrome Web Store 上架准备及权限清理。
