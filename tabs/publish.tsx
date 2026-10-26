@@ -649,6 +649,7 @@ function App() {
         <span className="brand-tab">发布中心</span>
       </div>
       <div className="topbar-status">
+        <a className="button ghost small" href="https://github.com/freestylefly/wesight-chrome/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">隐私政策</a>
         <span className={`pill ${center?.connected ? "is-online" : ""}`}>
           <i />{center?.connected ? "Obsidian 已连接" : center?.paired ? "Obsidian 未运行" : "未与 Obsidian 配对"}
         </span>

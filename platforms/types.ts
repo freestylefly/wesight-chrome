@@ -1,5 +1,4 @@
 import type { PlatformId, PublishAssetV1, PublishTaskV1 } from "~types/protocol"
-import type { XPostComposerInput, XPostComposerResult } from "~lib/x-post-composer"
 
 export interface AccountDetection {
   loggedIn: boolean
@@ -26,7 +25,6 @@ export interface PrepareDraftContext {
       markdown: string
     }) => Promise<void>
     uploadAsset: (platformId: PlatformId, asset: PublishAssetV1) => Promise<string>
-    prepareXPost?: (input: XPostComposerInput) => Promise<XPostComposerResult>
   }
 }
 

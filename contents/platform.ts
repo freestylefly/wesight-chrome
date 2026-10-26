@@ -119,7 +119,6 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
           return value
         },
         pageBridge: {
-          prepareXPost: async input => await send({ type: "PREPARE_X_POST_COMPOSER", input }) as import("~lib/x-post-composer").XPostComposerResult,
           fillEditor: async input => {
             await send({ type: "FILL_PLATFORM_EDITOR", ...input })
           },

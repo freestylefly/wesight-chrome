@@ -1,0 +1,28 @@
+{
+  "version": "1.1.1",
+  "manifestVersion": 3,
+  "fileCount": 18,
+  "zipBytes": 640291,
+  "sha256": "6bd1b081e2b7605ec6f7de971c6952799c6c630055733daa120cbd13381eaf99",
+  "requiredPermissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "hostPermissionCount": 30,
+  "optionalHosts": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "rootManifest": true,
+  "automatedChecks": {
+    "typescript": "passed",
+    "testFiles": 43,
+    "tests": 376,
+    "chromeBuild": "passed",
+    "edgeBuild": "passed before final privacy link addition"
+  },
+  "submissionStatus": "Prepared; publisher identity verification is required before store upload."
+}

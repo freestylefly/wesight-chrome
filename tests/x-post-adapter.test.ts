@@ -19,7 +19,7 @@ function task(count = 2): PublishTaskV1 {
 }
 function context(count = 2) {
   return { task: task(count), getAssetData: vi.fn(async (_asset: PublishAssetV1) => "data:image/png;base64,iVBORw0KGgo="), reportProgress: vi.fn(),
-    pageBridge: { fillEditor: vi.fn(), uploadAsset: vi.fn(), prepareXPost: vi.fn() },
+    pageBridge: { fillEditor: vi.fn(), uploadAsset: vi.fn() },
     uploadProgress: { complete: vi.fn(), skip: vi.fn(), fail: vi.fn() } }
 }
 const readyUrl = "https://x.com/compose/post?wesight_x_post_task=x-post-test"
@@ -47,7 +47,7 @@ describe("X native Post adapter", () => {
     const result = await xPostAdapter.retry(input)
     expect(mock.nativeText).toHaveBeenLastCalledWith(expect.objectContaining({ requested: true }))
     expect(result.draftUrl).toBe(readyUrl)
-    expect(mock.attach).not.toHaveBeenCalled(); expect(input.pageBridge.prepareXPost).not.toHaveBeenCalled()
+    expect(mock.attach).not.toHaveBeenCalled()
   })
 
   test("text with images waits for X's text prefill, then hands the image files to X's Post uploader", async () => {
@@ -62,7 +62,6 @@ describe("X native Post adapter", () => {
     expect(call.files.map((file: File) => [file.name, file.type])).toEqual([["1.png", "image/png"], ["2.png", "image/png"]])
     expect(input.uploadProgress.complete).toHaveBeenCalledTimes(2)
     expect(result).toEqual({ draftUrl: readyUrl, warnings: ["文案和图片已载入 X Post 编辑窗口，请确认后手动发布"] })
-    expect(input.pageBridge.prepareXPost).not.toHaveBeenCalled()
     expect(JSON.stringify(store)).not.toContain("正文内容")
   })
 

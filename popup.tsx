@@ -139,7 +139,10 @@ function App() {
       </section> : <section className="empty-state compact"><h2>文章准备就绪</h2><p>在发布中心开始同步后，进度会显示在这里。</p></section>}
     </>}
     {error && <div className="error-note">{error}</div>}
-    <footer>正文与图片仅通过本机临时通道传输</footer>
+    <footer>
+      <span>Obsidian 内容通过本机通道导入，素材同步到你选择的平台</span>
+      <a href="https://github.com/freestylefly/wesight-chrome/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">隐私政策</a>
+    </footer>
   </main>
 }
 

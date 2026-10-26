@@ -19,12 +19,10 @@ export type ExtensionRequest =
   | { type: "OPEN_TASK_TABS"; taskId: string }
   | { type: "PLATFORM_PAGE_READY"; platformId: PlatformId; url: string }
   | { type: "PLATFORM_RESULT"; taskId: string; platformId: PlatformId; warnings: string[]; draftUrl?: string; editorPending?: boolean }
-  | { type: "PREPARE_X_POST_COMPOSER"; input: import("~lib/x-post-composer").XPostComposerInput }
   | { type: "PLATFORM_LOGIN_REQUIRED"; taskId: string; platformId: PlatformId; message: string }
   | { type: "PLATFORM_FAILED"; taskId: string; platformId: PlatformId; message: string }
   | { type: "XIAOHONGSHU_UPLOAD_PROGRESS"; taskId: string; completed: number; total: number }
   | { type: "GET_X_PUBLIC_SCRIPT"; url: string }
-  | { type: "GET_X_POST_API_CONFIG" }
   | { type: "PLATFORM_PROGRESS"; taskId: string; platformId: PlatformId; message: string }
   | { type: "GET_ASSET_DATA"; taskId: string; asset: PublishAssetV1 }
   | { type: "GET_ASSET_CHUNK"; taskId: string; assetId: string; offset: number }

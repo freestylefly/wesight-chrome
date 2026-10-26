@@ -1,7 +1,4 @@
 import { xPublicScriptUrl } from "~lib/x-article-api"
-import { discoverPublicXPostApi } from "~lib/x-post-api"
-import { runXPostComposerInPage } from "~lib/x-post-composer"
-import { buildXPostText } from "~lib/x-post-content"
 import { normalizeDraft } from "~lib/article-preparation"
 import { completeWeSightLogin, loginPending, publishAuthState, signOutWeSight, startWeSightLogin, verifyCloudIdentity } from "~lib/cloud-auth"
 import type { WeSightAuthState } from "~types/auth"
@@ -827,38 +824,6 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
         message: `正在上传图片 ${completed}/${total}`
       })
       return true
-    }
-    case "GET_X_POST_API_CONFIG": {
-      const source = sender.url ? new URL(sender.url) : null
-      if (!source || source.protocol !== "https:" || !["x.com", "twitter.com"].includes(source.hostname)) throw new Error("X 动态接口配置请求来源无效")
-      return discoverPublicXPostApi()
-    }
-    case "PREPARE_X_POST_COMPOSER": {
-      const input = message.input
-      const tabId = sender.tab?.id
-      const source = sender.url ? new URL(sender.url) : null
-      const summary = await getTaskSummary(input.taskId)
-      if (tabId === undefined || source?.origin !== "https://x.com" || source.pathname !== "/compose/post"
-        || !summary?.targets?.includes("x-post") || summary.platforms["x-post"].tabId !== tabId) {
-        throw new Error("X 编辑窗口装载来源无效")
-      }
-      const task = taskForPlatform((await ensureRuntime(input.taskId)).task, "x-post")
-      const text = buildXPostText({ title: task.targetOptions?.xPost?.includeTitle ? task.article.title : "", body: task.article.markdown })
-      if (input.text !== text || !/^[\w]{1,15}$/.test(input.account)) throw new Error("X 编辑窗口内容校验失败")
-      if (!input.probe) {
-        const checkpoints = await getLocal<Record<string, { account: string; draftId?: string; composerMode?: string; images: Record<string, { id: string }>; skippedImages: string[] }>>("wesight_x_post_checkpoints_v1")
-        const checkpoint = checkpoints?.[input.taskId]
-        const ownsComposer = input.direct ? checkpoint?.composerMode === "native" && !checkpoint.draftId && input.draftId === ""
-          : Boolean(checkpoint?.draftId && checkpoint.draftId === input.draftId)
-        if (!ownsComposer || checkpoint?.account !== input.account.toLowerCase()) throw new Error("X 草稿记录已改变，请重新发起同步")
-        const images = task.assets.filter(asset => !checkpoint.skippedImages.includes(asset.id) && checkpoint.images[asset.id])
-          .map(asset => ({ uploadId: checkpoint.images[asset.id]!.id, fileName: asset.fileName, mimeType: asset.mimeType }))
-        if (JSON.stringify(input.images) !== JSON.stringify(images)) throw new Error("X 图片记录校验失败")
-      }
-      const results = await chrome.scripting.executeScript({ target: { tabId }, world: "MAIN", func: runXPostComposerInPage, args: [input] })
-      const result = results[0]?.result
-      if (!result) throw new Error("X 编辑窗口未返回装载结果")
-      return result
     }
     case "GET_X_PUBLIC_SCRIPT": {
       const source = sender.url ? new URL(sender.url) : null

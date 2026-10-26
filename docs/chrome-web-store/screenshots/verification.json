@@ -1,0 +1,47 @@
+{
+  "extensionVersion": "1.1.1",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "screenshots": [
+    "01-article-preview.png",
+    "02-markdown-editor.png",
+    "03-dynamic-preview.png",
+    "04-platform-copy.png"
+  ],
+  "signedIn": false,
+  "syncStarted": false,
+  "pageErrors": [],
+  "horizontalOverflow": false,
+  "articleDraftPersisted": [
+    {
+      "key": "current",
+      "title": "从一条灵感开始，完成今天的创作",
+      "mediaCount": 1
+    },
+    {
+      "key": "dynamic",
+      "title": "给灵感一个出口",
+      "mediaCount": 2
+    }
+  ],
+  "screenshotDimensions": {
+    "01-article-preview.png": {
+      "width": 1280,
+      "height": 800
+    },
+    "02-markdown-editor.png": {
+      "width": 1280,
+      "height": 800
+    },
+    "03-dynamic-preview.png": {
+      "width": 1280,
+      "height": 800
+    },
+    "04-platform-copy.png": {
+      "width": 1280,
+      "height": 800
+    }
+  }
+}

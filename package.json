@@ -1,7 +1,7 @@
 {
   "name": "wesight-publish-assistant",
   "displayName": "WeSight 发布助手",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Prepare article and social-post drafts from Obsidian, Markdown files, links, or the browser publish center for manual publishing.",
   "author": "WeSight",
   "license": "AGPL-3.0-or-later",
@@ -79,12 +79,10 @@
       "https://web.okjike.com/*",
       "https://api.wesight.ai/*",
       "https://x.com/*",
-      "https://api.x.com/*",
       "https://twitter.com/*",
       "https://upload.x.com/*",
       "https://abs.twimg.com/responsive-web/client-web/*",
-      "https://abs.twimg.com/responsive-web/client-web-legacy/*",
-      "https://abs.twimg.com/x-web/x-web/*"
+      "https://abs.twimg.com/responsive-web/client-web-legacy/*"
     ],
     "optional_host_permissions": [
       "https://*/*",

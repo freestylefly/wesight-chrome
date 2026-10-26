@@ -84,3 +84,10 @@ pnpm package
 - 诊断日志最多保留 100 条，并对令牌及密钥字段脱敏。
 
 平台页面结构更新后，单个平台可能需要更新适配器。失败状态会保留在 Popup 和 Obsidian 任务面板中，用户可以登录后重试。
+
+## 隐私与支持
+
+- [隐私政策](PRIVACY.md)：数据用途、接收方、保存期限及删除方式。
+- [权限说明](PERMISSIONS.md)：各浏览器权限与网站访问权限的用途。
+- 功能反馈：[GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues)。隐私及账号数据请求可联系 [hello@wesight.ai](mailto:hello@wesight.ai)。
+- [1.1.1 更新说明](docs/releases/1.1.1.md)：Chrome Web Store 上架准备及权限清理。
