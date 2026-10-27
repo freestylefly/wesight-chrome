@@ -24,6 +24,7 @@
     "chromeBuild": "passed",
     "edgeBuild": "passed before final privacy link addition"
   },
-  "submissionStatus": "Pending review; automatic publication after approval is enabled.",
-  "submissionRecord": "submission.json"
+  "submissionStatus": "Published on Chrome Web Store; public listing and Add to Chrome verified on 2026-10-27.",
+  "submissionRecord": "submission.json",
+  "publicListingUrl": "https://chromewebstore.google.com/detail/wesight-%E5%8F%91%E5%B8%83%E5%8A%A9%E6%89%8B/ocgepghgjgllnkhedapekeibaeklgoik"
 }

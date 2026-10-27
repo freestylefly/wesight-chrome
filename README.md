@@ -36,12 +36,13 @@ X 动态的文案通过 X 原生 Post 文字链接预填，扩展只读确认编
 
 X 文章复用当前浏览器的 X 登录态，通过 X 网页内部接口上传图片、创建包含标题和正文的草稿并设置封面，完成后打开草稿编辑页，由用户确认发布。同步过程不点击或填充 X 页面控件，不调用发布接口；接口配置缺失时直接报告错误。网络结果不确定时停止重复创建；封面失败后重试会复用同一草稿。内部接口可能变化或触发平台限制，不保证账号免于风控。图片支持 JPEG、PNG、WebP，单张不超过 5 MB。只有勾选 X 时才检查 15 张图片上限；超限提示右侧可勾选“自动跳过超出图片，保留全部文字”，按正文顺序保留前 15 张图片，其余图片仅从 X 草稿中移除，全部文字与其他平台内容保留。独立封面占用一个名额，此时保留前 14 张正文图片和封面。该选项会记住；未勾选时继续阻止超限同步。X 账号需要拥有文章功能权限，平台说明见 [X Articles](https://help.x.com/en/using-x/articles)。
 
-## 下载
+## 安装与下载
 
-- Chrome：[下载最新安装包](https://github.com/freestylefly/wesight-chrome/releases/latest/download/wesight-chrome.zip)
+- Chrome（推荐）：[从 Chrome Web Store 安装](https://chromewebstore.google.com/detail/wesight-%E5%8F%91%E5%B8%83%E5%8A%A9%E6%89%8B/ocgepghgjgllnkhedapekeibaeklgoik)
+- Chrome 手动 ZIP：[下载最新安装包](https://github.com/freestylefly/wesight-chrome/releases/latest/download/wesight-chrome.zip)
 - Edge：[下载最新安装包](https://github.com/freestylefly/wesight-chrome/releases/latest/download/wesight-edge.zip)
 
-Arc 使用 Chrome 安装包。
+Arc 手动安装时使用 Chrome ZIP 安装包。
 
 ## 本地开发
 
@@ -50,7 +51,7 @@ pnpm install
 pnpm dev
 ```
 
-Chrome 安装步骤：
+Chrome 手动 ZIP 安装步骤（以下开发者模式步骤适用于手动下载的 ZIP 安装包）：
 
 1. 下载并解压 `wesight-chrome.zip`。
 2. 在地址栏打开 `chrome://extensions/`。

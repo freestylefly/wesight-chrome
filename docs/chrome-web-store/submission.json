@@ -5,9 +5,9 @@
   "sourceCommit": "706cf54",
   "packageSha256": "6bd1b081e2b7605ec6f7de971c6952799c6c630055733daa120cbd13381eaf99",
   "submittedOn": "2026-10-26",
-  "lastVerifiedAt": "2026-10-26T23:39:08+08:00",
-  "reviewStatus": "pending_review",
-  "confirmation": "Your extension was submitted for review",
+  "lastVerifiedAt": "2026-10-27T17:33:58+08:00",
+  "reviewStatus": "published",
+  "confirmation": "Public Chrome Web Store listing is available with Add to Chrome.",
   "publishAutomaticallyAfterReview": true,
   "visibility": "public",
   "regions": "all",
@@ -46,8 +46,20 @@
       "attempt": 2,
       "version": "1.1.1",
       "submittedAt": "2026-10-26T23:39:08+08:00",
-      "outcome": "pending_review",
-      "metadataCommit": "af3d0ef"
+      "outcome": "published",
+      "metadataCommit": "af3d0ef",
+      "publiclyVerifiedAt": "2026-10-27T17:33:58+08:00"
     }
-  ]
+  ],
+  "publiclyVerifiedAt": "2026-10-27T17:33:58+08:00",
+  "publicListingUrl": "https://chromewebstore.google.com/detail/wesight-%E5%8F%91%E5%B8%83%E5%8A%A9%E6%89%8B/ocgepghgjgllnkhedapekeibaeklgoik",
+  "publishedVersion": "1.1.1",
+  "publicationVerification": {
+    "httpStatus": 200,
+    "pageTitle": "WeSight 发布助手 - Chrome Web Store",
+    "version": "1.1.1",
+    "updatedDate": "2026-10-27",
+    "installControl": "Add to Chrome",
+    "canonicalUrl": "https://chromewebstore.google.com/detail/wesight-%E5%8F%91%E5%B8%83%E5%8A%A9%E6%89%8B/ocgepghgjgllnkhedapekeibaeklgoik"
+  }
 }

@@ -4,9 +4,11 @@
 
 ## 本次提交
 
-1.1.1 已于 2026 年 10 月 26 日提交审核，后台显示 Pending review，并启用审核通过后自动发布。按发布者确认，本次使用审核员 Google 登录自行注册的免费单平台测试路径，未提供共享会员测试凭据。实际填写的 424 字符英文说明保存在 `review-note-en.txt`，送审信息保存在 `submission.json`。
+1.1.1 已于 2026 年 10 月 26 日提交审核，并于 2026 年 10 月 27 日确认公开上架。公开页面显示版本 1.1.1 和 Add to Chrome 安装入口。按发布者确认，本次使用审核员 Google 登录自行注册的免费单平台测试路径，未提供共享会员测试凭据。实际填写的 424 字符英文说明保存在 `review-note-en.txt`，送审信息保存在 `submission.json`。
 
-2026 年 10 月 26 日首次审核因商店介绍中的平台名称列表被判定为 Keyword Spam（Yellow Argon）。已将长介绍从 1,267 字符精简至 510 字符，移除名单，并使用相同 1.1.1 安装包重新送审，确认状态为 Pending review。支持邮箱统一为 `canghe0818@gmail.com`。
+2026 年 10 月 26 日首次审核因商店介绍中的平台名称列表被判定为 Keyword Spam（Yellow Argon）。已将长介绍从 1,267 字符精简至 510 字符，移除名单，并使用相同 1.1.1 安装包重新送审，随后获准上架。支持邮箱统一为 `canghe0818@gmail.com`。
+
+[从 Chrome Web Store 安装](https://chromewebstore.google.com/detail/wesight-%E5%8F%91%E5%B8%83%E5%8A%A9%E6%89%8B/ocgepghgjgllnkhedapekeibaeklgoik)。公开页面及验证记录见 `submission.json`。
 
 ## 功能与付费说明
 
