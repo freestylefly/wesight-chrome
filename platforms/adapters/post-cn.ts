@@ -1,4 +1,5 @@
 import type { POST_CN_PLATFORMS } from "~platforms/catalog/post-cn"
+import { baijiahaoPostAdapter } from "~platforms/post-cn/baijiahao"
 import { bilibiliPostAdapter } from "~platforms/post-cn/bilibili"
 import { dedaoPostAdapter } from "~platforms/post-cn/dedao"
 import { doubanPostAdapter } from "~platforms/post-cn/douban"
@@ -28,5 +29,6 @@ export const POST_CN_ADAPTERS: Record<(typeof POST_CN_PLATFORMS)[number]["id"], 
   "shipinhao-post": shipinhaoPostAdapter,
   "xiaoheihe-post": xiaoheihePostAdapter,
   "maimai-post": maimaiPostAdapter,
-  "dedao-post": dedaoPostAdapter
+  "dedao-post": dedaoPostAdapter,
+  "baijiahao-post": baijiahaoPostAdapter
 }

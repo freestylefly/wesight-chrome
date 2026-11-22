@@ -36,6 +36,8 @@ interface Case {
   title: boolean
   warnings: RegExp[]
   sequential?: boolean
+  /** Page URL (path + query) the editor runs on. */
+  path?: string
 }
 
 const BODY = "正文第一段正文第二段"
@@ -52,7 +54,9 @@ const CASES: Case[] = [
   { id: "shipinhao-post", fixture: "shipinhao", body: `${BODY}#AI#世界模型`, title: true, warnings: [] },
   { id: "xiaoheihe-post", fixture: "xiaoheihe", body: BODY, title: true, warnings: [/话题需要在编辑页手动选择/] },
   { id: "maimai-post", fixture: "maimai", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/] },
-  { id: "dedao-post", fixture: "dedao", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/] }
+  { id: "dedao-post", fixture: "dedao", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/] },
+  { id: "baijiahao-post", fixture: "baijiahao", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/],
+    path: "/builder/rc/edit?type=events" }
 ]
 
 function task(id: Id, images = 3, extra: Partial<PublishTaskV1> = {}): PublishTaskV1 {
@@ -148,6 +152,21 @@ describe("国内动态 catalog", () => {
     expect(platformDefinition("juejin-post").accountKey).toBe("juejin")
     expect(platformDefinition("bilibili-post").accountKey).toBe("bilibili")
   })
+
+  test("query-routed entries only claim their own editor routes", () => {
+    expect(platformFromUrl("https://baijiahao.baidu.com/builder/rc/edit?type=events")).toBe("baijiahao-post")
+    expect(platformFromUrl("https://baijiahao.baidu.com/builder/rc/edit?type=news")).toBe("baijiahao-article")
+    expect(platformFromUrl("https://cp.kuaishou.com/article/publish/video?tabType=2")).toBe("kuaishou-post")
+    // kuaishou-video will be the host fallback; the post pattern itself must not claim other tabs.
+    const kuaishou = new RegExp(platformDefinition("kuaishou-post").paths![0]!)
+    expect(kuaishou.test("/article/publish/video?tabType=1")).toBe(false)
+    expect(kuaishou.test("/article/publish/video")).toBe(false)
+  })
+
+  test("image-text platforms that reject text-only posts declare requiresMedia", () => {
+    const required = POST_CN_PLATFORMS.filter(entry => "requiresMedia" in entry.media && entry.media.requiresMedia).map(entry => entry.id).sort()
+    expect(required).toEqual(["douyin-post", "kuaishou-post", "shipinhao-post"])
+  })
 })
 
 describe.each(CASES)("$id adapter", testCase => {
@@ -155,6 +174,7 @@ describe.each(CASES)("$id adapter", testCase => {
 
   test("fills body, title and images in order without publishing", async () => {
     load(testCase.fixture)
+    if (testCase.path) history.replaceState({}, "", testCase.path)
     const complete = vi.fn()
     const result = await adapter.prepareDraft({
       task: task(testCase.id),
@@ -173,7 +193,7 @@ describe.each(CASES)("$id adapter", testCase => {
   })
 
   test("reports the login wall instead of filling", async () => {
-    document.documentElement.innerHTML = "<body><main><h2>扫码登录</h2><p>验证码登录 密码登录 手机号登录 短信登录/注册 登录得到 登录脉脉 扫描二维码登录 微信扫码登录 登录掘金 登录知乎 登录豆瓣</p><button class='publish'>发布</button></main></body>"
+    document.documentElement.innerHTML = "<body><main><h2>扫码登录</h2><p>使用账号登录 登录百家号 验证码登录 密码登录 手机号登录 短信登录/注册 登录得到 登录脉脉 扫描二维码登录 微信扫码登录 登录掘金 登录知乎 登录豆瓣</p><button class='publish'>发布</button></main></body>"
     const account = await adapter.detectAccount()
     expect(account.loggedIn).toBe(false)
     expect(account.message).toMatch(/^请先登录/)
