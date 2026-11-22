@@ -77,6 +77,97 @@
       "label": "X 动态",
       "shortLabel": "X",
       "stage": "stable"
+    },
+    {
+      "id": "toutiao-post",
+      "group": "post",
+      "label": "微头条",
+      "shortLabel": "微头条",
+      "stage": "beta"
+    },
+    {
+      "id": "zhihu-post",
+      "group": "post",
+      "label": "知乎想法",
+      "shortLabel": "知乎想法",
+      "stage": "beta"
+    },
+    {
+      "id": "bilibili-post",
+      "group": "post",
+      "label": "B站动态",
+      "shortLabel": "B站动态",
+      "stage": "beta"
+    },
+    {
+      "id": "juejin-post",
+      "group": "post",
+      "label": "掘金沸点",
+      "shortLabel": "沸点",
+      "stage": "beta"
+    },
+    {
+      "id": "douyin-post",
+      "group": "post",
+      "label": "抖音图文",
+      "shortLabel": "抖音图文",
+      "stage": "beta"
+    },
+    {
+      "id": "kuaishou-post",
+      "group": "post",
+      "label": "快手图文",
+      "shortLabel": "快手图文",
+      "stage": "beta"
+    },
+    {
+      "id": "xueqiu-post",
+      "group": "post",
+      "label": "雪球动态",
+      "shortLabel": "雪球",
+      "stage": "beta"
+    },
+    {
+      "id": "douban-post",
+      "group": "post",
+      "label": "豆瓣广播",
+      "shortLabel": "豆瓣",
+      "stage": "beta"
+    },
+    {
+      "id": "zsxq-post",
+      "group": "post",
+      "label": "知识星球主题",
+      "shortLabel": "知识星球",
+      "stage": "beta"
+    },
+    {
+      "id": "shipinhao-post",
+      "group": "post",
+      "label": "视频号图文",
+      "shortLabel": "视频号图文",
+      "stage": "beta"
+    },
+    {
+      "id": "xiaoheihe-post",
+      "group": "post",
+      "label": "小黑盒图文",
+      "shortLabel": "小黑盒",
+      "stage": "beta"
+    },
+    {
+      "id": "maimai-post",
+      "group": "post",
+      "label": "脉脉动态",
+      "shortLabel": "脉脉",
+      "stage": "beta"
+    },
+    {
+      "id": "dedao-post",
+      "group": "post",
+      "label": "得到知识城邦",
+      "shortLabel": "得到",
+      "stage": "beta"
     }
   ]
 }

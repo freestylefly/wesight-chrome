@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<body>
+<main>
+  <article><img src="https://pic.zhihu.test/feed.jpg" alt="feed"></article>
+  <button type="button" data-reveals="[role='dialog']">写想法</button>
+  <div role="dialog" hidden>
+    <input placeholder="添加标题（选填）" data-testid="title">
+    <div contenteditable="true" role="textbox" data-testid="editor"></div>
+    <input type="file" accept="image/*" multiple>
+    <div class="previews"></div>
+    <button type="button" class="publish">发布</button>
+  </div>
+</main>
+</body>
+</html>
