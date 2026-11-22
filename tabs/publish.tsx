@@ -52,11 +52,13 @@ import {
 } from "~lib/storage"
 import type { WeSightAuthState, WeSightUser } from "~types/auth"
 import { requestPlatformPermissions } from "~lib/optional-platforms"
+import { findPlatformDefinition } from "~platforms/catalog"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import type { ExtensionRequest, ExtensionResponse, PublishCenterState } from "~types/messages"
 import { ARTICLE_PLATFORM_IDS, type ArticlePlatformId, type PlatformId, type PlatformTaskState } from "~types/protocol"
 
-const PLATFORM_BRAND: Record<ArticlePlatformId, { glyph: string; color: string }> = {
+// Core article brands; newer platforms take theirs from the catalog.
+const PLATFORM_BRAND: Partial<Record<ArticlePlatformId, { glyph: string; color: string }>> = {
   zhihu: { glyph: "知", color: "#1772f6" },
   csdn: { glyph: "C", color: "#fc5531" },
   juejin: { glyph: "掘", color: "#1e80ff" },
@@ -199,6 +201,8 @@ function ObsidianMark() {
 
 function PlatformLogo({ platformId }: { platformId: ArticlePlatformId }) {
   const brand = PLATFORM_BRAND[platformId]
+    ?? findPlatformDefinition(platformId)?.brand
+    ?? { glyph: Array.from(PLATFORM_CONFIG[platformId].shortLabel)[0] ?? "?", color: "#64748b" }
   return <span className={`platform-logo ${brand.glyph.length > 1 ? "is-wide" : ""}`} style={{ background: brand.color }}>
     {brand.glyph}
   </span>
