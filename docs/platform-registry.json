@@ -79,6 +79,83 @@
       "stage": "stable"
     },
     {
+      "id": "cnblogs-article",
+      "group": "article",
+      "label": "博客园文章",
+      "shortLabel": "博客园",
+      "stage": "beta"
+    },
+    {
+      "id": "51cto-article",
+      "group": "article",
+      "label": "51CTO 博客",
+      "shortLabel": "51CTO",
+      "stage": "beta"
+    },
+    {
+      "id": "infoq-article",
+      "group": "article",
+      "label": "InfoQ 写作",
+      "shortLabel": "InfoQ",
+      "stage": "beta"
+    },
+    {
+      "id": "segmentfault-article",
+      "group": "article",
+      "label": "思否文章",
+      "shortLabel": "思否",
+      "stage": "beta"
+    },
+    {
+      "id": "aliyun-article",
+      "group": "article",
+      "label": "阿里云开发者社区",
+      "shortLabel": "阿里云",
+      "stage": "beta"
+    },
+    {
+      "id": "tencentcloud-article",
+      "group": "article",
+      "label": "腾讯云开发者社区",
+      "shortLabel": "腾讯云",
+      "stage": "beta"
+    },
+    {
+      "id": "volcengine-article",
+      "group": "article",
+      "label": "火山引擎开发者社区",
+      "shortLabel": "火山引擎",
+      "stage": "beta"
+    },
+    {
+      "id": "oschina-article",
+      "group": "article",
+      "label": "OSChina 博客",
+      "shortLabel": "OSChina",
+      "stage": "beta"
+    },
+    {
+      "id": "jianshu-article",
+      "group": "article",
+      "label": "简书",
+      "shortLabel": "简书",
+      "stage": "beta"
+    },
+    {
+      "id": "sspai-article",
+      "group": "article",
+      "label": "少数派",
+      "shortLabel": "少数派",
+      "stage": "beta"
+    },
+    {
+      "id": "woshipm-article",
+      "group": "article",
+      "label": "人人都是产品经理",
+      "shortLabel": "人人都是PM",
+      "stage": "beta"
+    },
+    {
       "id": "toutiao-post",
       "group": "post",
       "label": "微头条",
