@@ -1,0 +1,82 @@
+{
+  "note": "Generated from platforms/catalog by tests/platform-registry.test.ts. The Obsidian plugin mirrors these ids.",
+  "platforms": [
+    {
+      "id": "zhihu",
+      "group": "article",
+      "label": "知乎专栏",
+      "shortLabel": "知乎",
+      "stage": "stable"
+    },
+    {
+      "id": "csdn",
+      "group": "article",
+      "label": "CSDN 博客",
+      "shortLabel": "CSDN",
+      "stage": "stable"
+    },
+    {
+      "id": "juejin",
+      "group": "article",
+      "label": "掘金文章",
+      "shortLabel": "掘金",
+      "stage": "stable"
+    },
+    {
+      "id": "bilibili-article",
+      "group": "article",
+      "label": "B站专栏",
+      "shortLabel": "B站",
+      "stage": "stable"
+    },
+    {
+      "id": "toutiao",
+      "group": "article",
+      "label": "今日头条",
+      "shortLabel": "头条",
+      "stage": "stable"
+    },
+    {
+      "id": "weibo-article",
+      "group": "article",
+      "label": "微博头条文章",
+      "shortLabel": "微博",
+      "stage": "stable"
+    },
+    {
+      "id": "x-article",
+      "group": "article",
+      "label": "X 文章",
+      "shortLabel": "X",
+      "stage": "stable"
+    },
+    {
+      "id": "xiaohongshu",
+      "group": "post",
+      "label": "小红书图文",
+      "shortLabel": "小红书",
+      "stage": "stable"
+    },
+    {
+      "id": "weibo-post",
+      "group": "post",
+      "label": "微博图文动态",
+      "shortLabel": "微博动态",
+      "stage": "stable"
+    },
+    {
+      "id": "jike-post",
+      "group": "post",
+      "label": "即刻动态",
+      "shortLabel": "即刻",
+      "stage": "stable"
+    },
+    {
+      "id": "x-post",
+      "group": "post",
+      "label": "X 动态",
+      "shortLabel": "X",
+      "stage": "stable"
+    }
+  ]
+}

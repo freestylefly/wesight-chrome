@@ -1,4 +1,5 @@
 import { sha256 } from "~lib/crypto"
+import { platformDefinition } from "~platforms/catalog"
 import { buildXPostText, supportedXPostImages, xPostTextError, X_POST_IMAGE_LIMIT, X_POST_IMAGE_BYTES } from "~lib/x-post-content"
 import type { StoredAsset } from "~lib/draft-store"
 import { DYNAMIC_PLATFORM_IDS, MAX_ASSET_BYTES, MAX_TASK_BYTES, MAX_VIDEO_BYTES, TASK_TTL_MS, type DynamicPlatformId, type PublishAssetV1, type PublishTaskV1 } from "~types/protocol"
@@ -62,7 +63,11 @@ export function getDynamicValidationErrors(draft: DynamicDraft, targets = draft.
     const media = copy.mediaIds ? copy.mediaIds.map(id => draft.media.find(item => item.id === id)).filter((item): item is DynamicMedia => !!item) : draft.media
     if (copy.mediaIds?.some(id => !ids.has(id))) errors.push("平台引用的附件不存在，请重新选择")
     if (copy.mediaIds && new Set(copy.mediaIds).size !== copy.mediaIds.length) errors.push("平台图片不能重复选择")
-    if (platformId !== "x-post" && media.filter(item => item.kind === "image").length > 9) errors.push("每个平台当前最多同步 9 张图片")
+    const definition = platformDefinition(platformId)
+    const imageLimit = definition.media?.images ?? 9
+    if (platformId !== "x-post" && media.filter(item => item.kind === "image").length > imageLimit) errors.push(`${definition.shortLabel}当前最多同步 ${imageLimit} 张图片`)
+    if (platformId !== "x-post" && definition.textLimit && copy.body.trim().length > definition.textLimit) errors.push(`${definition.shortLabel}正文最多 ${definition.textLimit} 字`)
+    if (platformId !== "x-post" && media.some(item => item.kind === "video") && !definition.media?.video) errors.push(`${definition.shortLabel}当前不支持同步视频`)
     if (!copy.body.trim() && !media.length && (platformId !== "x-post" || !buildXPostText(copy))) errors.push("请填写动态正文或添加附件")
     if (platformId === "x-post") {
       const text = buildXPostText(copy)

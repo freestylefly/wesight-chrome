@@ -51,6 +51,7 @@ import {
   type TaskSummary
 } from "~lib/storage"
 import type { WeSightAuthState, WeSightUser } from "~types/auth"
+import { requestPlatformPermissions } from "~lib/optional-platforms"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import type { ExtensionRequest, ExtensionResponse, PublishCenterState } from "~types/messages"
 import { ARTICLE_PLATFORM_IDS, type ArticlePlatformId, type PlatformId, type PlatformTaskState } from "~types/protocol"
@@ -581,6 +582,11 @@ function App() {
       setNotice({ tone: "error", text: startBlocker })
       return
     }
+    // Ask before any other await so Chrome still sees the click as the user gesture.
+    if (!(await requestPlatformPermissions(selected).catch(() => false))) {
+      setNotice({ tone: "error", text: "需要允许访问所选平台的网站后才能同步" })
+      return
+    }
     setSyncing(true)
     setNotice(null)
     try {
@@ -615,6 +621,7 @@ function App() {
     platformLoginPending.current.add(platformId)
     setOpeningPlatformLogins([...platformLoginPending.current])
     try {
+      if (!(await requestPlatformPermissions([platformId]))) throw new Error(`需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能检测登录状态`)
       await request<{ tabId: number }>({ type: "OPEN_PLATFORM_LOGIN", platformId })
       setNotice({ tone: "info", text: `请在${PLATFORM_CONFIG[platformId].shortLabel}完成登录，账号会自动更新。` })
     } catch (reason) {

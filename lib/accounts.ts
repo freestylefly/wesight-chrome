@@ -1,6 +1,7 @@
 import type { AccountRecord } from "~lib/storage"
 import type { ArticlePlatformId, PlatformId } from "~types/protocol"
 import { readAccountPage } from "~lib/account-page"
+import { findPlatformDefinition, type PlatformDefinition } from "~platforms/catalog"
 
 type Probe = () => Promise<AccountRecord>
 
@@ -238,6 +239,18 @@ const PROBES: Record<ArticlePlatformId, Probe> = {
   }
 }
 
+function pathValue(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => record(current)[key], value)
+}
+
+/** Generic JSON probe declared in a platform's catalog entry. */
+export async function catalogProbe(probe: NonNullable<PlatformDefinition["account"]>): Promise<AccountRecord> {
+  const { status, body } = await getJson(probe.url)
+  const name = text(pathValue(body, probe.name))
+  if (name) return loggedIn(name, probe.avatar ? text(pathValue(body, probe.avatar)) : undefined)
+  return status === 401 || status === 403 ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
 const pending = new Map<PlatformId, Promise<AccountRecord>>()
 
 async function probe(platformId: PlatformId): Promise<AccountRecord> {
@@ -245,7 +258,8 @@ async function probe(platformId: PlatformId): Promise<AccountRecord> {
     const page = await (platformId === "jike-post" || platformId === "xiaohongshu" || platformId === "x-article" ? probeSessionPages(platformId) : probeOpenPages(platformId))
       .catch(() => ({ state: "unknown" } as AccountRecord))
     if (page.state !== "unknown") return { ...page, checkedAt: new Date().toISOString() }
-    const fallback = PROBES[platformId as ArticlePlatformId]
+    const declared = findPlatformDefinition(platformId)?.account
+    const fallback = PROBES[platformId as ArticlePlatformId] ?? (declared ? () => catalogProbe(declared) : undefined)
     return { ...(fallback ? await fallback() : { state: "unknown" as const }), checkedAt: new Date().toISOString() }
   } catch {
     return { state: "unknown", checkedAt: new Date().toISOString() }

@@ -1,4 +1,5 @@
 import type { TaskSummary } from "~lib/storage"
+import { assertPlatformPermission } from "~lib/optional-platforms"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import { PLATFORM_IDS, type PlatformId } from "~types/protocol"
 
@@ -55,6 +56,7 @@ export async function createTaskTabs(
   for (const platformId of platforms) {
     await options.beforeOpen?.(platformId)
     try {
+      await assertPlatformPermission(platformId, PLATFORM_CONFIG[platformId].label)
       const tab = await chrome.tabs.create(createProperties(PLATFORM_CONFIG[platformId].editorUrl, options.windowId))
       if (tab.id === undefined) throw new Error("浏览器未返回标签页编号")
       opened.push({ platformId, tab })

@@ -20,6 +20,7 @@ import {
 } from "~lib/draft-store"
 import { writeLog } from "~lib/logs"
 import { focusOrOpenPlatformTab } from "~lib/open-platform-tab"
+import { syncOptionalContentScripts } from "~lib/optional-platforms"
 import { taskForPlatform } from "~lib/platform-task"
 import { PlatformLoginMonitor } from "~lib/platform-login"
 import { sendTabMessageWithRetry } from "~lib/tab-message"
@@ -1008,6 +1009,9 @@ void platformLoginMonitor.resume().catch(() => undefined)
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === BRIDGE_HEARTBEAT_ALARM) void bridgeConnection.refresh().catch(() => undefined)
 })
-chrome.runtime.onStartup.addListener(() => { void bridgeConnection.resume().catch(() => undefined) })
-chrome.runtime.onInstalled.addListener(() => { void bridgeConnection.resume().catch(() => undefined) })
+const syncOptionalPlatforms = () => { void syncOptionalContentScripts().catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`)) }
+chrome.runtime.onStartup.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
+chrome.runtime.onInstalled.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
+chrome.permissions.onAdded.addListener(syncOptionalPlatforms)
+chrome.permissions.onRemoved.addListener(syncOptionalPlatforms)
 void bridgeConnection.resume().catch(() => undefined)

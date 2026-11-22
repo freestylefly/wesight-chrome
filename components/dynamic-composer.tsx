@@ -1,3 +1,5 @@
+import { requestPlatformPermissions } from "~lib/optional-platforms"
+import { platformDefinition } from "~platforms/catalog"
 import {
   AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2,
   ExternalLink, Eye, FileVideo2, Hash, ImagePlus, Info, LoaderCircle, Play,
@@ -43,12 +45,15 @@ export interface DynamicComposerProps {
   onTaskStarted?: (task: TaskSummary) => void
 }
 
-const BRAND: Record<DynamicPlatformId, { name: string; glyph: string; color: string; caption: string }> = {
-  xiaohongshu: { name: "小红书", glyph: "小红书", color: "#ed3658", caption: "把灵感写成一篇笔记" },
-  "weibo-post": { name: "微博", glyph: "微", color: "#e94b42", caption: "分享此刻的新鲜事" },
-  "jike-post": { name: "即刻", glyph: "J", color: "#e6be1f", caption: "和同好聊聊你的发现" },
-  "x-post": { name: "X", glyph: "X", color: "#101419", caption: "标题会合并到正文，话题默认不同步到 X，按 X 规则计数" }
-}
+const BRAND = Object.fromEntries(DYNAMIC_PLATFORM_IDS.map(id => {
+  const definition = platformDefinition(id)
+  return [id, {
+    name: definition.shortLabel.replace(/动态$/, ""),
+    glyph: definition.brand?.glyph ?? definition.shortLabel.slice(0, 1),
+    color: definition.brand?.color ?? "#475467",
+    caption: definition.brand?.caption ?? `同步到${definition.label}`
+  }]
+})) as Record<DynamicPlatformId, { name: string; glyph: string; color: string; caption: string }>
 const STATUS: Record<PlatformTaskState["status"], string> = {
   queued: "等待中", opening: "打开中", login_required: "需要登录", filling: "同步中", ready: "待发布", failed: "失败", cancelled: "已取消"
 }
@@ -332,6 +337,7 @@ export default function DynamicComposer({ accounts, access, auth, task, checking
     if (!auth?.user || !access || access.maxTargets === 0) { onLogin(); return }
     if (limit !== null && draft.selected.length > limit) { onUpgrade(draft.selected); return }
     if (errors.length) { onNotice({ tone: "error", text: errors[0]! }); return }
+    if (!(await requestPlatformPermissions(draft.selected).catch(() => false))) { onNotice({ tone: "error", text: "需要允许访问所选平台的网站后才能同步" }); return }
     setSyncing(true)
     onNotice(null)
     try {

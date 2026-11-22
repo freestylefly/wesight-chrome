@@ -1,37 +1,32 @@
+import { CATALOG_IDS, catalogIdsInGroup, findPlatformDefinition, type CatalogGroupId, type CatalogPlatformId } from "~platforms/catalog"
+
 export const PROTOCOL_VERSION = 1 as const
 export const TASK_TTL_MS = 10 * 60 * 1000
 export const MAX_ASSET_BYTES = 10 * 1024 * 1024
 export const MAX_TASK_BYTES = 100 * 1024 * 1024
-export const BRIDGE_CAPABILITIES = ["target-payloads-v1", "compose-v1", "dynamic-compose-v1", "bridge-connect-v1"] as const
-export const DYNAMIC_PLATFORM_IDS = ["xiaohongshu", "weibo-post", "jike-post", "x-post"] as const
-export type DynamicPlatformId = typeof DYNAMIC_PLATFORM_IDS[number]
+export const BRIDGE_CAPABILITIES = ["target-payloads-v1", "compose-v1", "dynamic-compose-v1", "bridge-connect-v1", "platform-registry-v1"] as const
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024
 
-export const ARTICLE_PLATFORM_IDS = [
-  "zhihu",
-  "csdn",
-  "juejin",
-  "bilibili-article",
-  "toutiao",
-  "weibo-article",
-  "x-article"
-] as const
+// Platform ids come from platforms/catalog; the plugin mirrors the same ids.
+export const PLATFORM_IDS = CATALOG_IDS
+export type PlatformId = CatalogPlatformId
+export const ARTICLE_PLATFORM_IDS = catalogIdsInGroup("article")
+export type ArticlePlatformId = CatalogGroupId<"article">
+export const DYNAMIC_PLATFORM_IDS = catalogIdsInGroup("post")
+export type DynamicPlatformId = CatalogGroupId<"post">
+export const VIDEO_PLATFORM_IDS = catalogIdsInGroup("video")
+export type VideoPlatformId = CatalogGroupId<"video">
+export const PODCAST_PLATFORM_IDS = catalogIdsInGroup("podcast")
+export type PodcastPlatformId = CatalogGroupId<"podcast">
 
-export const PLATFORM_IDS = [
-  "zhihu",
-  "csdn",
-  "juejin",
-  "bilibili-article",
-  "toutiao",
-  "weibo-article",
-  "x-article",
-  "xiaohongshu",
-  "weibo-post",
-  "jike-post",
-  "x-post"
-] as const
-export type PlatformId = (typeof PLATFORM_IDS)[number]
-export type ArticlePlatformId = (typeof ARTICLE_PLATFORM_IDS)[number]
+/**
+ * Whether a task carrying a video may target this platform. Post platforms keep
+ * accepting the task so an adapter that cannot use video reports its own reason.
+ */
+export function platformAcceptsVideo(platformId: PlatformId): boolean {
+  const definition = findPlatformDefinition(platformId)
+  return definition?.group === "post" || definition?.media?.video === true
+}
 
 export const PLATFORM_TASK_STATUSES = [
   "queued",
@@ -209,7 +204,7 @@ export function getPublishTaskValidationError(value: unknown, now = Date.now()):
   if (new Set(value.assets.map(asset => (asset as { id: string }).id)).size !== value.assets.length) return "文章图片清单包含重复图片，请更新 Obsidian 插件后重新发送"
   if (!Array.isArray(value.targets) || value.targets.length === 0 || !value.targets.every(isPlatformId)) return "任务包含不支持的平台，请更新 Obsidian 插件和浏览器扩展"
   if (new Set(value.targets).size !== value.targets.length) return "任务平台清单重复，请从 Obsidian 重新发送文章"
-  if (videos.length && !value.targets.every(target => DYNAMIC_PLATFORM_IDS.includes(target as DynamicPlatformId))) return "视频仅支持动态发布平台"
+  if (videos.length && !value.targets.every(target => platformAcceptsVideo(target as PlatformId))) return "所选平台中有不支持视频的平台"
   if (value.targetPayloads !== undefined) {
     if (!isRecord(value.targetPayloads) || !Object.keys(value.targetPayloads).every(isPlatformId)) return "平台文章内容格式无效，请更新 Obsidian 插件后重新发送"
     const assetIds = new Set(value.assets.map(asset => (asset as { id: string }).id))

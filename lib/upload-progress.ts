@@ -1,5 +1,6 @@
 import type { PlatformId, PublishAssetV1, PublishTaskV1 } from "~types/protocol"
 import { xImagePlan } from "~lib/article-preparation"
+import { findPlatformDefinition } from "~platforms/catalog"
 import { supportedXImages } from "~lib/x-image-policy"
 import { supportedXPostImages } from "~lib/x-post-content"
 
@@ -24,7 +25,8 @@ export function uploadAssetsForPlatform(platformId: PlatformId, task: PublishTas
     if (supported.cover) used.add(supported.cover)
     return task.assets.filter(asset => used.has(`wesight-asset://${asset.id}`))
   }
-  if (platformId === "xiaohongshu" || platformId === "weibo-post" || platformId === "jike-post") return task.assets
+  // Posts, videos and podcasts attach every asset; articles upload what the body references.
+  if (findPlatformDefinition(platformId)?.group !== "article") return task.assets
   if (["bilibili-article", "toutiao", "weibo-article"].includes(platformId)) {
     const referenced = task.assets.filter(asset => {
       const token = `wesight-asset://${asset.id}`
