@@ -187,7 +187,7 @@ export function parseWeiboAccount(html: string): AccountRecord {
 
 // Endpoints mirror the "current user" calls each creator site makes itself.
 // Any unexpected shape falls back to "unknown" so a site change never blocks publishing.
-const PROBES: Record<ArticlePlatformId, Probe> = {
+const PROBES: Partial<Record<ArticlePlatformId, Probe>> = {
   async "x-article"() {
     return { state: "unknown" }
   },

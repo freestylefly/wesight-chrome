@@ -46,7 +46,11 @@ export function platformFromUrl(url: string): PlatformId | null {
   const candidates = PLATFORM_CATALOG.filter(entry => (entry.hosts as readonly string[]).includes(parsed.hostname))
   if (!candidates.length) return null
   const byPath = candidates.find(entry => "paths" in entry
-    && (entry.paths as readonly string[]).some(pattern => new RegExp(pattern).test(`${parsed.pathname}${parsed.search}`)))
+    && (entry.paths as readonly string[]).some(pattern => {
+      const expression = new RegExp(pattern)
+      // Path-only patterns such as "^/pins(?:/|$)" must keep matching when a query follows.
+      return expression.test(parsed.pathname) || expression.test(`${parsed.pathname}${parsed.search}`)
+    }))
   if (byPath) return byPath.id
   return (candidates.find(entry => !("paths" in entry)) ?? candidates[0]!).id
 }
