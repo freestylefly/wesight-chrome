@@ -168,6 +168,20 @@
       "label": "得到知识城邦",
       "shortLabel": "得到",
       "stage": "beta"
+    },
+    {
+      "id": "weixin-post",
+      "group": "post",
+      "label": "公众号贴图",
+      "shortLabel": "公众号贴图",
+      "stage": "beta"
+    },
+    {
+      "id": "baijiahao-post",
+      "group": "post",
+      "label": "百家号动态",
+      "shortLabel": "百家号动态",
+      "stage": "beta"
     }
   ]
 }
