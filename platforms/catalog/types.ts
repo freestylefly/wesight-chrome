@@ -27,7 +27,7 @@ export interface PlatformDefinition {
   hosts: readonly string[]
   /**
    * When several platforms share a hostname, the first one whose pattern
-   * matches `pathname + search` wins (e.g. "^/builder/rc/edit\\?(?:.*&)?type=events");
+   * matches the pathname, or `pathname + search`, wins (e.g. "^/builder/rc/edit\\?(?:.*&)?type=events");
    * a platform without `paths` is the fallback for its hosts.
    */
   paths?: readonly string[]
