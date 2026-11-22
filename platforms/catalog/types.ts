@@ -26,8 +26,9 @@ export interface PlatformDefinition {
   /** Exact hostnames whose pages belong to this platform, including its login hosts. */
   hosts: readonly string[]
   /**
-   * When several platforms share a hostname, the first one whose path pattern
-   * matches wins; a platform without `paths` is the fallback for its hosts.
+   * When several platforms share a hostname, the first one whose pattern
+   * matches `pathname + search` wins (e.g. "^/builder/rc/edit\\?(?:.*&)?type=events");
+   * a platform without `paths` is the fallback for its hosts.
    */
   paths?: readonly string[]
   /**
@@ -42,6 +43,8 @@ export interface PlatformDefinition {
     images?: number
     video?: boolean
     audio?: boolean
+    /** The platform rejects text-only posts (e.g. Douyin image-text). */
+    requiresMedia?: boolean
   }
   /** Character limit for post bodies, when the platform has one. */
   textLimit?: number

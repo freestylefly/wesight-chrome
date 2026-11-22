@@ -778,7 +778,7 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
         tabId,
         draftUrl: message.draftUrl ?? currentUrl,
         warnings: message.warnings,
-        message: message.editorPending ? "正在打开 X Post 编辑窗口" : message.warnings.length ? "内容已填充，请检查提示后发布" : "内容已准备，请检查后发布"
+        message: message.editorPending ? `正在打开${PLATFORM_CONFIG[message.platformId].shortLabel}编辑窗口` : message.warnings.length ? "内容已填充，请检查提示后发布" : "内容已准备，请检查后发布"
       })
       if (tabId !== undefined && message.draftUrl && message.draftUrl !== currentUrl) {
         globalThis.setTimeout(() => {

@@ -28,7 +28,7 @@ export const CORE_PLATFORMS = [
   },
   {
     id: "x-article", group: "article", label: "X 文章", shortLabel: "X", editorUrl: "https://x.com/compose/articles",
-    titleLimit: 100, accountKey: "x", hosts: ["x.com", "twitter.com"], paths: ["^/compose/articles(?:/|$)"], permission: "bundled", stage: "stable"
+    titleLimit: 100, accountKey: "x", hosts: ["x.com", "twitter.com"], paths: ["^/compose/articles(?:[/?]|$)"], permission: "bundled", stage: "stable"
   },
   {
     id: "xiaohongshu", group: "post", label: "小红书图文", shortLabel: "小红书", editorUrl: "https://creator.xiaohongshu.com/publish/publish?target=image",

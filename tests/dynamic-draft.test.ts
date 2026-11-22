@@ -5,8 +5,10 @@ import { describe, expect, test } from "vitest"
 import { buildDynamicTask, createDynamicDraft, dynamicDraftFromTask, dynamicVariant, getDynamicValidationErrors, hasDynamicContent, nextDynamicDraft, type DynamicDraft, type DynamicMedia } from "~lib/dynamic-draft"
 import { getCurrentDraft, getCurrentDynamicDraft, getLocalTask, getStoredAsset, pruneAssets, saveCurrentDraft, saveCurrentDynamicDraft, saveLocalTask, type ComposeDraft } from "~lib/draft-store"
 import { taskForPlatform } from "~lib/platform-task"
-import { DYNAMIC_PLATFORM_IDS, MAX_ASSET_BYTES, MAX_VIDEO_BYTES, getPublishTaskValidationError, isPublishTaskV1 } from "~types/protocol"
+import { MAX_ASSET_BYTES, MAX_VIDEO_BYTES, getPublishTaskValidationError, isPublishTaskV1 } from "~types/protocol"
 
+// Behaviour of the shipped post platforms; batch platforms have their own tests.
+const DYNAMIC_PLATFORM_IDS = ["xiaohongshu", "weibo-post", "jike-post", "x-post"] as const
 const ORIGINAL_DYNAMIC_PLATFORMS = DYNAMIC_PLATFORM_IDS.filter(id => id !== "x-post")
 
 function image(letter: string): DynamicMedia {

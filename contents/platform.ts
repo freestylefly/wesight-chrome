@@ -2,7 +2,7 @@ import type { PlasmoCSConfig } from "plasmo"
 
 import { showReadyBanner } from "~lib/ready-banner"
 import { createUploadProgress, uploadAssetsForPlatform, type UploadProgressController } from "~lib/upload-progress"
-import { isXPlatform, platformFromUrl } from "~platforms/config"
+import { isXPlatform, platformFromUrl, sameAccountPlatform } from "~platforms/config"
 import { PLATFORM_ADAPTERS } from "~platforms/index"
 import type { ContentRequest, ExtensionRequest, ExtensionResponse } from "~types/messages"
 import type { PlatformId, PublishAssetV1 } from "~types/protocol"
@@ -46,7 +46,9 @@ function requestPlatform(message: ContentRequest): PlatformId | null {
   const current = platformFromUrl(location.href)
   if (message.type !== "PREPARE_DRAFT") return current
   if (message.platformId) {
-    if (message.platformId === current || (isXPlatform(current) && isXPlatform(message.platformId))) return message.platformId
+    // A site may host several destinations or redirect to its login host; the
+    // background already bound this tab to the task's platform.
+    if (sameAccountPlatform(current, message.platformId)) return message.platformId
     throw new Error("当前页面与同步平台不匹配")
   }
   // Accept tasks from an older background instance while selecting the one X

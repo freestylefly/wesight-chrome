@@ -67,6 +67,7 @@ export function getDynamicValidationErrors(draft: DynamicDraft, targets = draft.
     const imageLimit = definition.media?.images ?? 9
     if (platformId !== "x-post" && media.filter(item => item.kind === "image").length > imageLimit) errors.push(`${definition.shortLabel}当前最多同步 ${imageLimit} 张图片`)
     if (platformId !== "x-post" && definition.textLimit && copy.body.trim().length > definition.textLimit) errors.push(`${definition.shortLabel}正文最多 ${definition.textLimit} 字`)
+    if (definition.media?.requiresMedia && !media.length) errors.push(`${definition.shortLabel}需要至少一张图片或一个视频`)
     if (platformId !== "x-post" && media.some(item => item.kind === "video") && !definition.media?.video) errors.push(`${definition.shortLabel}当前不支持同步视频`)
     if (!copy.body.trim() && !media.length && (platformId !== "x-post" || !buildXPostText(copy))) errors.push("请填写动态正文或添加附件")
     if (platformId === "x-post") {
