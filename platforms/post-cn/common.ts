@@ -37,11 +37,6 @@ export interface PostCnSpec {
   topics: "hash" | "hash-pair" | "none"
   /** Body text that only appears on the login wall. */
   loginText?: RegExp
-  /**
-   * Runs after the login and media checks. Returning a result ends the run, e.g. to
-   * reopen the editor with a session token (`editorPending`); null continues filling.
-   */
-  beforeFill?: (context: PrepareDraftContext) => Promise<PrepareDraftResult | null>
   textLimit?: number
 }
 
@@ -283,8 +278,6 @@ export function createPostCnAdapter(spec: PostCnSpec): PlatformAdapter & { spec:
     if (postVideoAsset(context.task)) throw new Error(`${spec.name}当前不支持同步视频，请改用图片或取消勾选`)
     if (loginRequired()) throw new Error(`请先登录${spec.site}，登录完成后从发布助手重试`)
     if (spec.requiresImages && !imageAssets(context).length) throw new Error(`${spec.name}至少需要一张图片，请添加图片后重试`)
-    const early = await spec.beforeFill?.(context)
-    if (early) return early
 
     await switchMode()
     if (spec.imagesFirst) await uploadImages(context, null, warnings)

@@ -25,7 +25,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   {
     id: "baijiahao-article", group: "article", label: "百家号文章", shortLabel: "百家号",
     editorUrl: "https://baijiahao.baidu.com/builder/rc/edit?type=news",
-    titleLimit: 30, accountKey: "baijiahao", hosts: ["baijiahao.baidu.com", "passport.baidu.com"], paths: ["^/builder/rc/edit(?:/|$)"],
+    titleLimit: 30, accountKey: "baijiahao", hosts: ["baijiahao.baidu.com", "passport.baidu.com"], paths: ["^/builder/rc/edit\\?(?:.*&)?type=news(?:&|$)"],
     permission: "optional", stage: "beta",
     brand: { glyph: "百", color: "#2932e1" }
   },

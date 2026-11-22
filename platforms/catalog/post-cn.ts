@@ -82,15 +82,6 @@ export const POST_CN_PLATFORMS = [
     brand: { glyph: "得", color: "#ff6b00", caption: "话题需在得到页面手动添加" }
   },
   {
-    // The 贴图 editor needs the session token; the adapter adds it from the home page and reopens this route.
-    id: "weixin-post", group: "post", label: "公众号贴图", shortLabel: "公众号贴图",
-    editorUrl: "https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&lang=zh_CN",
-    titleLimit: 20, accountKey: "weixin", hosts: ["mp.weixin.qq.com"],
-    paths: ["^/cgi-bin/appmsg\\?(?:.*&)?type=77(?:&|$)"],
-    permission: "optional", stage: "beta", media: { images: 9, video: false, requiresMedia: true }, textLimit: 1000,
-    brand: { glyph: "公", color: "#07c160", caption: "至少需要一张图片，话题需在公众号页面手动添加" }
-  },
-  {
     id: "baijiahao-post", group: "post", label: "百家号动态", shortLabel: "百家号动态", editorUrl: "https://baijiahao.baidu.com/builder/rc/edit?type=events",
     titleLimit: 1000, accountKey: "baijiahao", hosts: ["baijiahao.baidu.com"],
     paths: ["^/builder/rc/edit\\?(?:.*&)?type=events(?:&|$)"],

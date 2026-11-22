@@ -9,7 +9,6 @@ import { kuaishouPostAdapter } from "~platforms/post-cn/kuaishou"
 import { maimaiPostAdapter } from "~platforms/post-cn/maimai"
 import { shipinhaoPostAdapter } from "~platforms/post-cn/shipinhao"
 import { toutiaoPostAdapter } from "~platforms/post-cn/toutiao"
-import { weixinPostAdapter } from "~platforms/post-cn/weixin"
 import { xiaoheihePostAdapter } from "~platforms/post-cn/xiaoheihe"
 import { xueqiuPostAdapter } from "~platforms/post-cn/xueqiu"
 import { zhihuPostAdapter } from "~platforms/post-cn/zhihu"
@@ -31,6 +30,5 @@ export const POST_CN_ADAPTERS: Record<(typeof POST_CN_PLATFORMS)[number]["id"], 
   "xiaoheihe-post": xiaoheihePostAdapter,
   "maimai-post": maimaiPostAdapter,
   "dedao-post": dedaoPostAdapter,
-  "weixin-post": weixinPostAdapter,
   "baijiahao-post": baijiahaoPostAdapter
 }

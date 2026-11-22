@@ -6,7 +6,6 @@ import { POST_CN_ADAPTERS } from "~platforms/adapters/post-cn"
 import { platformDefinition } from "~platforms/catalog"
 import { POST_CN_PLATFORMS } from "~platforms/catalog/post-cn"
 import { platformFromUrl } from "~platforms/config"
-import { weixinSessionToken } from "~platforms/post-cn/weixin"
 import { findAction, isFinalAction, postBody, topicText, type createPostCnAdapter } from "~platforms/post-cn/common"
 import type { PublishTaskV1 } from "~types/protocol"
 
@@ -56,8 +55,6 @@ const CASES: Case[] = [
   { id: "xiaoheihe-post", fixture: "xiaoheihe", body: BODY, title: true, warnings: [/话题需要在编辑页手动选择/] },
   { id: "maimai-post", fixture: "maimai", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/] },
   { id: "dedao-post", fixture: "dedao", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/] },
-  { id: "weixin-post", fixture: "weixin", body: BODY, title: true, warnings: [/话题需要在编辑页手动选择/],
-    path: "/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&lang=zh_CN&token=123456" },
   { id: "baijiahao-post", fixture: "baijiahao", body: BODY, title: false, warnings: [/没有标题栏/, /话题需要在编辑页手动选择/],
     path: "/builder/rc/edit?type=events" }
 ]
@@ -157,17 +154,18 @@ describe("国内动态 catalog", () => {
   })
 
   test("query-routed entries only claim their own editor routes", () => {
-    expect(platformFromUrl("https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77&token=1")).toBe("weixin-post")
-    expect(platformFromUrl("https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&token=1")).not.toBe("weixin-post")
-    expect(platformFromUrl("https://baijiahao.baidu.com/builder/rc/edit?type=news")).not.toBe("baijiahao-post")
+    expect(platformFromUrl("https://baijiahao.baidu.com/builder/rc/edit?type=events")).toBe("baijiahao-post")
+    expect(platformFromUrl("https://baijiahao.baidu.com/builder/rc/edit?type=news")).toBe("baijiahao-article")
     expect(platformFromUrl("https://cp.kuaishou.com/article/publish/video?tabType=2")).toBe("kuaishou-post")
-    expect(platformFromUrl("https://cp.kuaishou.com/article/publish/video?tabType=1")).not.toBe("kuaishou-post")
-    expect(platformFromUrl("https://cp.kuaishou.com/article/publish/video")).not.toBe("kuaishou-post")
+    // kuaishou-video will be the host fallback; the post pattern itself must not claim other tabs.
+    const kuaishou = new RegExp(platformDefinition("kuaishou-post").paths![0]!)
+    expect(kuaishou.test("/article/publish/video?tabType=1")).toBe(false)
+    expect(kuaishou.test("/article/publish/video")).toBe(false)
   })
 
   test("image-text platforms that reject text-only posts declare requiresMedia", () => {
     const required = POST_CN_PLATFORMS.filter(entry => "requiresMedia" in entry.media && entry.media.requiresMedia).map(entry => entry.id).sort()
-    expect(required).toEqual(["douyin-post", "kuaishou-post", "shipinhao-post", "weixin-post"])
+    expect(required).toEqual(["douyin-post", "kuaishou-post", "shipinhao-post"])
   })
 })
 
@@ -256,26 +254,6 @@ describe("国内动态 shared behaviour", () => {
     expect(fail).toHaveBeenCalledTimes(1)
     expect(publishClicks).toBe(0)
   })
-
-  test("weixin-post reopens the 贴图 route with the session token from the console home", async () => {
-    history.replaceState({}, "", "/cgi-bin/home?t=home/index&lang=zh_CN")
-    document.body.innerHTML = "<nav><a href='/cgi-bin/appmsg?t=media/appmsg_list&token=987654&lang=zh_CN'>内容管理</a></nav><button class='publish'>发表</button>"
-    const result = await POST_CN_ADAPTERS["weixin-post"].prepareDraft({ task: task("weixin-post", 1), getAssetData: async () => "data:image/png;base64,AQID" })
-    expect(weixinSessionToken()).toBe("987654")
-    expect(result.editorPending).toBe(true)
-    const target = new URL(result.draftUrl)
-    expect(target.pathname).toBe("/cgi-bin/appmsg")
-    expect(target.searchParams.get("type")).toBe("77")
-    expect(target.searchParams.get("token")).toBe("987654")
-    expect(platformFromUrl(`https://mp.weixin.qq.com${target.pathname}${target.search}`)).toBe("weixin-post")
-  })
-
-  test("weixin-post without a session token asks the user to sign in", async () => {
-    history.replaceState({}, "", "/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=77")
-    document.body.innerHTML = "<main>正在加载</main>"
-    await expect(POST_CN_ADAPTERS["weixin-post"].prepareDraft({ task: task("weixin-post", 1), getAssetData: async () => "" }))
-      .rejects.toThrow(/登录会话/)
-  }, 15_000)
 
   test("never resolves a final publish control as a composer action", () => {
     document.body.innerHTML = "<button>发布</button><button>发广播</button><div role='tablist'><div role='tab'>发布图文</div></div>"
