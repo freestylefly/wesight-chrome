@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+  <body>
+    <nav>
+      <a href="#" role="link"><svg aria-label="Create"></svg><span>Create</span></a>
+      <div class="create-menu" hidden>
+        <a href="#" role="link"><span>Post</span></a>
+        <a href="#" role="link"><span>Live video</span></a>
+      </div>
+    </nav>
+    <div role="dialog" class="create-dialog" hidden>
+      <h1 class="step-title">Create new post</h1>
+      <form><input type="file" accept="image/jpeg,image/png,image/heic,image/heif,video/mp4,video/quicktime" multiple></form>
+      <div class="previews"></div>
+      <div class="step-actions"></div>
+      <div class="caption-step" hidden>
+        <div contenteditable="true" role="textbox" aria-label="Write a caption..."></div>
+      </div>
+    </div>
+  </body>
+</html>

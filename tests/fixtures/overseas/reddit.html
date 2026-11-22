@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <body>
+    <main>
+      <div class="community-picker"><button type="button">Select a community</button></div>
+      <div role="tablist">
+        <button type="button" role="tab">Text</button>
+        <button type="button" role="tab" class="images-tab">Images &amp; Video</button>
+        <button type="button" role="tab">Link</button>
+      </div>
+      <faceplate-textarea-input name="title"></faceplate-textarea-input>
+      <shreddit-composer>
+        <div contenteditable="true" role="textbox" name="body" aria-label="Post body text field"></div>
+      </shreddit-composer>
+      <div class="image-panel" hidden></div>
+      <button type="button" id="submit-post-button">Post</button>
+    </main>
+  </body>
+</html>

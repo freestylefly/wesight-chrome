@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <body>
+    <header><img class="global-nav__me-photo" alt="Ada Lovelace" src="https://media.example.test/me.jpg"></header>
+    <main>
+      <button type="button" class="share-box-feed-entry__trigger">Start a post</button>
+    </main>
+    <div role="dialog" class="share-box" hidden>
+      <div class="ql-editor" contenteditable="true" role="textbox" aria-label="Text editor for creating content"></div>
+      <button type="button" aria-label="Add media"></button>
+      <div class="media-previews"></div>
+      <button type="button">Post</button>
+    </div>
+    <div class="media-editor" hidden>
+      <input id="media-editor-file-selector__file-input" type="file" accept="image/*" multiple>
+      <button type="button">Next</button>
+    </div>
+  </body>
+</html>
