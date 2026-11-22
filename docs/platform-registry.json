@@ -77,6 +77,125 @@
       "label": "X 动态",
       "shortLabel": "X",
       "stage": "stable"
+    },
+    {
+      "id": "weixin-article",
+      "group": "article",
+      "label": "微信公众号文章",
+      "shortLabel": "公众号",
+      "stage": "beta"
+    },
+    {
+      "id": "qq-article",
+      "group": "article",
+      "label": "企鹅号文章",
+      "shortLabel": "企鹅号",
+      "stage": "beta"
+    },
+    {
+      "id": "baijiahao-article",
+      "group": "article",
+      "label": "百家号文章",
+      "shortLabel": "百家号",
+      "stage": "beta"
+    },
+    {
+      "id": "netease-article",
+      "group": "article",
+      "label": "网易号文章",
+      "shortLabel": "网易号",
+      "stage": "beta"
+    },
+    {
+      "id": "sohu-article",
+      "group": "article",
+      "label": "搜狐号文章",
+      "shortLabel": "搜狐号",
+      "stage": "beta"
+    },
+    {
+      "id": "douyin-article",
+      "group": "article",
+      "label": "抖音文章",
+      "shortLabel": "抖音",
+      "stage": "beta"
+    },
+    {
+      "id": "zsxq-article",
+      "group": "article",
+      "label": "知识星球文章",
+      "shortLabel": "知识星球",
+      "stage": "beta"
+    },
+    {
+      "id": "smzdm-article",
+      "group": "article",
+      "label": "什么值得买文章",
+      "shortLabel": "值得买",
+      "stage": "beta"
+    },
+    {
+      "id": "xueqiu-article",
+      "group": "article",
+      "label": "雪球文章",
+      "shortLabel": "雪球",
+      "stage": "beta"
+    },
+    {
+      "id": "eastmoney-article",
+      "group": "article",
+      "label": "东方财富财富号文章",
+      "shortLabel": "财富号",
+      "stage": "beta"
+    },
+    {
+      "id": "tonghuashun-article",
+      "group": "article",
+      "label": "同花顺号文章",
+      "shortLabel": "同花顺",
+      "stage": "beta"
+    },
+    {
+      "id": "yidian-article",
+      "group": "article",
+      "label": "一点资讯文章",
+      "shortLabel": "一点号",
+      "stage": "beta"
+    },
+    {
+      "id": "dayu-article",
+      "group": "article",
+      "label": "大鱼号文章",
+      "shortLabel": "大鱼号",
+      "stage": "beta"
+    },
+    {
+      "id": "topnews-article",
+      "group": "article",
+      "label": "顶端号文章",
+      "shortLabel": "顶端号",
+      "stage": "beta"
+    },
+    {
+      "id": "kuaichuan-article",
+      "group": "article",
+      "label": "360 快传号文章",
+      "shortLabel": "快传号",
+      "stage": "beta"
+    },
+    {
+      "id": "autohome-article",
+      "group": "article",
+      "label": "汽车之家车家号文章",
+      "shortLabel": "车家号",
+      "stage": "beta"
+    },
+    {
+      "id": "dongchedi-article",
+      "group": "article",
+      "label": "懂车帝懂车号文章",
+      "shortLabel": "懂车号",
+      "stage": "beta"
     }
   ]
 }
