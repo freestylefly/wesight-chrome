@@ -371,6 +371,76 @@
       "label": "百家号动态",
       "shortLabel": "百家号动态",
       "stage": "beta"
+    },
+    {
+      "id": "bsky-post",
+      "group": "post",
+      "label": "Bluesky 动态",
+      "shortLabel": "Bluesky",
+      "stage": "beta"
+    },
+    {
+      "id": "linkedin-post",
+      "group": "post",
+      "label": "LinkedIn 动态",
+      "shortLabel": "LinkedIn",
+      "stage": "beta"
+    },
+    {
+      "id": "threads-post",
+      "group": "post",
+      "label": "Threads 动态",
+      "shortLabel": "Threads",
+      "stage": "beta"
+    },
+    {
+      "id": "reddit-post",
+      "group": "post",
+      "label": "Reddit 帖子",
+      "shortLabel": "Reddit",
+      "stage": "beta"
+    },
+    {
+      "id": "facebook-post",
+      "group": "post",
+      "label": "Facebook 动态",
+      "shortLabel": "Facebook",
+      "stage": "beta"
+    },
+    {
+      "id": "substack-post",
+      "group": "post",
+      "label": "Substack Notes",
+      "shortLabel": "Substack",
+      "stage": "beta"
+    },
+    {
+      "id": "pinterest-post",
+      "group": "post",
+      "label": "Pinterest Pin",
+      "shortLabel": "Pinterest",
+      "stage": "beta"
+    },
+    {
+      "id": "instagram-post",
+      "group": "post",
+      "label": "Instagram 图文",
+      "shortLabel": "Instagram",
+      "stage": "beta"
+    },
+    {
+      "id": "medium-article",
+      "group": "article",
+      "label": "Medium 文章",
+      "shortLabel": "Medium",
+      "stage": "beta"
+    },
+    {
+      "id": "substack-article",
+      "group": "article",
+      "label": "Substack 文章",
+      "shortLabel": "Substack",
+      "stage": "beta"
     }
   ]
 }
