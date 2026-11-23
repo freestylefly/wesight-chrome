@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { postTextLength } from "~lib/dynamic-draft"
-import { syncOptionalContentScripts } from "~lib/optional-platforms"
+import { assertPlatformPermission, isPermissionFailure, PlatformPermissionError, syncOptionalContentScripts } from "~lib/optional-platforms"
 
 const STATIC_MATCHES = ["https://www.zhihu.com/*", "https://zhuanlan.zhihu.com/*", "https://juejin.cn/*", "https://passport.juejin.cn/*", "https://mp.toutiao.com/*", "https://sso.toutiao.com/*", "https://passport.bilibili.com/*"]
 
@@ -58,5 +58,26 @@ describe("postTextLength", () => {
   it("counts an emoji once and includes appended hashtags", () => {
     expect(postTextLength({ body: "hi 👋🏽", tags: [] })).toBe(4)
     expect(postTextLength({ body: "hi", tags: ["#tag", "two"] })).toBe("hi\n\n#tag #two".length)
+  })
+})
+
+describe("missing site access", () => {
+  it("fails an ungranted optional platform with a message the 授权并重试 button recognises", async () => {
+    mockChrome(() => false)
+    const error = await assertPlatformPermission("cnblogs-article", "博客园文章").catch(reason => reason)
+    expect(error).toBeInstanceOf(PlatformPermissionError)
+    expect(isPermissionFailure(error.message)).toBe(true)
+    expect(isPermissionFailure("打开编辑页失败：网络错误")).toBe(false)
+  })
+
+  it("never blocks bundled platforms", async () => {
+    mockChrome(() => false)
+    await expect(assertPlatformPermission("zhihu", "知乎专栏")).resolves.toBeUndefined()
+  })
+
+  it("registers the script before an optional platform's tab opens", async () => {
+    const { registered } = mockChrome(() => true)
+    await assertPlatformPermission("cnblogs-article", "博客园文章")
+    expect(registered[0]?.matches).toContain("https://i.cnblogs.com/*")
   })
 })

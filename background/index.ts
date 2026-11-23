@@ -20,7 +20,7 @@ import {
 } from "~lib/draft-store"
 import { writeLog } from "~lib/logs"
 import { focusOrOpenPlatformTab } from "~lib/open-platform-tab"
-import { syncOptionalContentScripts } from "~lib/optional-platforms"
+import { assertPlatformPermission, isPermissionFailure, PlatformPermissionError, platformsMissingPermission, syncOptionalContentScripts } from "~lib/optional-platforms"
 import { taskForPlatform } from "~lib/platform-task"
 import { PlatformLoginMonitor } from "~lib/platform-login"
 import { sendTabMessageWithRetry } from "~lib/tab-message"
@@ -362,6 +362,7 @@ async function prepareXiaohongshuOnCompletedTab(tabId: number, url?: string): Pr
 }
 
 async function createPlatformTabs(runtime: RuntimeTask, windowId?: number): Promise<void> {
+  let permissionMissing = false
   await createTaskTabs(runtime.task.targets, {
     windowId,
     beforeOpen: platformId => reportStatus(runtime, platformId, "opening", { message: "正在打开编辑页" }),
@@ -370,10 +371,48 @@ async function createPlatformTabs(runtime: RuntimeTask, windowId?: number): Prom
     },
     onFailure: async (platformId, error) => {
       const message = error instanceof Error ? error.message : String(error)
-      await reportStatus(runtime, platformId, "failed", { message: `打开编辑页失败：${message}` })
+      // Only a click in an extension page can grant site access, so send the
+      // user to the publish center, where the failed row offers 授权并重试.
+      if (error instanceof PlatformPermissionError) permissionMissing = true
+      await reportStatus(runtime, platformId, "failed", { message: error instanceof PlatformPermissionError ? message : `打开编辑页失败：${message}` })
       await writeLog("error", platformId, `打开编辑页失败：${message}`)
     }
   })
+  if (permissionMissing) await showPermissionPrompt(runtime, windowId)
+}
+
+/**
+ * Bring forward the page that lists this task, so the user can click 授权并重试:
+ * the publish center for compose tasks, the toolbar popup for Obsidian tasks.
+ */
+async function showPermissionPrompt(runtime: RuntimeTask, windowId?: number): Promise<void> {
+  const summary = await getTaskSummary(runtime.task.taskId)
+  if (summary?.origin === "compose") {
+    await openPublishCenter(windowId)
+    return
+  }
+  try {
+    await chrome.action.openPopup(windowId === undefined ? undefined : { windowId })
+  } catch {
+    await chrome.action.setBadgeText({ text: "!" }).catch(() => undefined)
+    await chrome.action.setBadgeBackgroundColor({ color: "#d92d20" }).catch(() => undefined)
+  }
+}
+
+// Retrying twice in a row would open two editor tabs; the page's own retry and
+// the permissions.onAdded retry below can both fire for one 授权并重试 click.
+const RETRY_DEDUP_MS = 3_000
+const recentRetries = new Map<string, number>()
+
+/** After the user grants site access, retry every platform that failed for lack of it. */
+async function retryGrantedPlatforms(): Promise<void> {
+  const summary = await getTaskSummary()
+  if (!summary) return
+  const failed = (summary.targets ?? []).filter(id => summary.platforms[id]?.status === "failed" && isPermissionFailure(summary.platforms[id]?.message))
+  const missingNow = new Set(await platformsMissingPermission(failed))
+  for (const platformId of failed.filter(id => !missingNow.has(id))) {
+    await retryPlatform(summary.taskId, platformId).catch(error => writeLog("warn", platformId, `授权后自动重试失败：${error instanceof Error ? error.message : String(error)}`))
+  }
 }
 
 async function startTask(
@@ -446,7 +485,12 @@ async function startTask(
     return
   }
   if (handoff.retryPlatform) {
-    await retryPlatform(task.taskId, handoff.retryPlatform)
+    try {
+      await retryPlatform(task.taskId, handoff.retryPlatform)
+    } catch (error) {
+      if (!(error instanceof PlatformPermissionError)) throw error
+      await showPermissionPrompt(runtime, windowId)
+    }
     return
   }
   await createPlatformTabs(runtime, windowId)
@@ -609,12 +653,22 @@ async function startDynamicSync(targets: DynamicPlatformId[], windowId?: number)
 }
 
 async function retryPlatform(taskId: string, platformId: PlatformId): Promise<void> {
+  const retryKey = `${taskId}:${platformId}`
+  const lastRetry = recentRetries.get(retryKey)
+  if (lastRetry !== undefined && Date.now() - lastRetry < RETRY_DEDUP_MS) return
+  recentRetries.set(retryKey, Date.now())
   const { auth } = await currentAccess(true)
   if (!auth.user) throw new Error("请先登录 WeSight 后重试")
   const runtime = await ensureRuntime(taskId)
   if (!runtime.task.targets.includes(platformId)) throw new Error("该平台不在当前任务中")
   const summary = await getTaskSummary(taskId)
   const existingTabId = summary?.platforms[platformId].tabId
+  try {
+    await assertPlatformPermission(platformId, PLATFORM_CONFIG[platformId].label)
+  } catch (error) {
+    await reportStatus(runtime, platformId, "failed", { message: error instanceof Error ? error.message : String(error) })
+    throw error
+  }
   await reportStatus(runtime, platformId, "opening", { message: "正在重新打开编辑页" })
   if (existingTabId !== undefined) {
     if (platformId === "x-post") {
@@ -1032,6 +1086,13 @@ chrome.alarms.onAlarm.addListener(alarm => {
 const syncOptionalPlatforms = () => { void syncOptionalContentScripts().catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`)) }
 chrome.runtime.onStartup.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
 chrome.runtime.onInstalled.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
-chrome.permissions.onAdded.addListener(syncOptionalPlatforms)
+chrome.permissions.onAdded.addListener(() => {
+  void chrome.action.setBadgeText({ text: "" }).catch(() => undefined)
+  // Register the scripts first so the retried tabs load an adapter.
+  void syncOptionalContentScripts()
+    .catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`))
+    .then(() => retryGrantedPlatforms())
+    .catch(() => undefined)
+})
 chrome.permissions.onRemoved.addListener(syncOptionalPlatforms)
 void bridgeConnection.resume().catch(() => undefined)

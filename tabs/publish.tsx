@@ -51,7 +51,7 @@ import {
   type TaskSummary
 } from "~lib/storage"
 import type { WeSightAuthState, WeSightUser } from "~types/auth"
-import { requestPlatformPermissions } from "~lib/optional-platforms"
+import { isPermissionFailure, requestPlatformPermissions } from "~lib/optional-platforms"
 import { findPlatformDefinition } from "~platforms/catalog"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import type { ExtensionRequest, ExtensionResponse, PublishCenterState } from "~types/messages"
@@ -608,6 +608,11 @@ function App() {
   const platformAction = async (platformId: PlatformId, action: "open" | "retry") => {
     const activeTask = mode === "dynamic" ? center?.currentTask : task
     if (!activeTask) return
+    // Retrying is a click in this page, so it can still ask Chrome for site access.
+    if (action === "retry" && !(await requestPlatformPermissions([platformId]).catch(() => false))) {
+      setNotice({ tone: "error", text: `需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能重试` })
+      return
+    }
     setBusyPlatform(platformId)
     try {
       await request(action === "open"
@@ -896,7 +901,7 @@ function App() {
                     ? <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : "去登录"}</button>
                     : null}
                   {["failed", "login_required"].includes(state.status)
-                    ? <button className="link" disabled={busyPlatform === platformId} onClick={() => void platformAction(platformId, "retry")}>重试</button>
+                    ? <button className="link" disabled={busyPlatform === platformId} onClick={() => void platformAction(platformId, "retry")}>{isPermissionFailure(state.message) ? "授权并重试" : "重试"}</button>
                     : null}
                 </> : account.state === "logged_in"
                   ? <span className="account-dot is-online"><i />已登录</span>

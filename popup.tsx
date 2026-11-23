@@ -6,6 +6,7 @@ import logo from "data-base64:~assets/icon.png"
 import "./popup.css"
 
 import type { ExtensionRequest, ExtensionResponse, PopupState } from "~types/messages"
+import { isPermissionFailure, requestPlatformPermissions } from "~lib/optional-platforms"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import { PLATFORM_IDS, type PlatformId, type PlatformTaskState } from "~types/protocol"
 
@@ -62,6 +63,12 @@ function App() {
   const retry = async (platformId: PlatformId) => {
     const task = state?.currentTask
     if (!task) return
+    // Ask for site access from this click; if the prompt closes the popup, the
+    // background retries the platform as soon as access is granted.
+    if (!(await requestPlatformPermissions([platformId]).catch(() => false))) {
+      setError(`需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能重试`)
+      return
+    }
     setBusy(platformId)
     try {
       await request({ type: "RETRY_PLATFORM", taskId: task.taskId, platformId })
@@ -131,7 +138,7 @@ function App() {
             return <div className="platform-row" key={id}>
               <StatusIcon status={item.status} />
               <div><strong>{PLATFORM_CONFIG[id].label}</strong><span>{item.message || STATUS_LABEL[item.status]}</span></div>
-              {retryable && <button disabled={busy === id} onClick={() => void retry(id)}>{busy === id ? "重试中" : "重试"}</button>}
+              {retryable && <button disabled={busy === id} onClick={() => void retry(id)}>{busy === id ? "重试中" : isPermissionFailure(item.message) ? "授权并重试" : "重试"}</button>}
             </div>
           })}
         </div>

@@ -36,10 +36,22 @@ export async function requestPlatformPermissions(platformIds: readonly PlatformI
  * Fail early when an optional platform lacks site access, and make sure its
  * content script is registered before the caller opens a tab for it.
  */
-export async function assertPlatformPermission(platformId: PlatformId, label: string): Promise<void> {
-  if ((await platformsMissingPermission([platformId])).length) {
-    throw new Error(`尚未授权访问${label}，请在 WeSight 发布中心勾选该平台并允许访问后重试`)
+/** Start of every "site access missing" failure message; the publish center keys its 授权并重试 button on it. */
+export const PERMISSION_MISSING_TEXT = "尚未授权访问"
+
+export function isPermissionFailure(message: string | undefined): boolean {
+  return Boolean(message?.includes(PERMISSION_MISSING_TEXT))
+}
+
+export class PlatformPermissionError extends Error {
+  constructor(readonly platformId: PlatformId, label: string) {
+    super(`${PERMISSION_MISSING_TEXT}${label}，请在 WeSight 发布中心点“授权并重试”`)
+    this.name = "PlatformPermissionError"
   }
+}
+
+export async function assertPlatformPermission(platformId: PlatformId, label: string): Promise<void> {
+  if ((await platformsMissingPermission([platformId])).length) throw new PlatformPermissionError(platformId, label)
   if (findPlatformDefinition(platformId)?.permission === "optional") await syncOptionalContentScripts()
 }
 
