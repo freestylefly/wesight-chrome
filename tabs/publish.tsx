@@ -36,6 +36,7 @@ import "./publish.css"
 import "./canghe-green.css"
 
 import { normalizeDraft, xImageWarning, xUnsupportedImageWarning } from "~lib/article-preparation"
+import { installErrorCapture } from "~lib/page-trace"
 import { membershipCheckoutUrl } from "~lib/cloud-auth"
 import { cangheGreenPreview } from "~lib/preview-theme"
 
@@ -51,11 +52,16 @@ import {
   type TaskSummary
 } from "~lib/storage"
 import type { WeSightAuthState, WeSightUser } from "~types/auth"
+import { isPermissionFailure, requestPlatformPermissions } from "~lib/optional-platforms"
+import { findPlatformDefinition } from "~platforms/catalog"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import type { ExtensionRequest, ExtensionResponse, PublishCenterState } from "~types/messages"
 import { ARTICLE_PLATFORM_IDS, type ArticlePlatformId, type PlatformId, type PlatformTaskState } from "~types/protocol"
 
-const PLATFORM_BRAND: Record<ArticlePlatformId, { glyph: string; color: string }> = {
+installErrorCapture("publish-center")
+
+// Core article brands; newer platforms take theirs from the catalog.
+const PLATFORM_BRAND: Partial<Record<ArticlePlatformId, { glyph: string; color: string }>> = {
   zhihu: { glyph: "知", color: "#1772f6" },
   csdn: { glyph: "C", color: "#fc5531" },
   juejin: { glyph: "掘", color: "#1e80ff" },
@@ -198,6 +204,8 @@ function ObsidianMark() {
 
 function PlatformLogo({ platformId }: { platformId: ArticlePlatformId }) {
   const brand = PLATFORM_BRAND[platformId]
+    ?? findPlatformDefinition(platformId)?.brand
+    ?? { glyph: Array.from(PLATFORM_CONFIG[platformId].shortLabel)[0] ?? "?", color: "#64748b" }
   return <span className={`platform-logo ${brand.glyph.length > 1 ? "is-wide" : ""}`} style={{ background: brand.color }}>
     {brand.glyph}
   </span>
@@ -581,6 +589,11 @@ function App() {
       setNotice({ tone: "error", text: startBlocker })
       return
     }
+    // Ask before any other await so Chrome still sees the click as the user gesture.
+    if (!(await requestPlatformPermissions(selected).catch(() => false))) {
+      setNotice({ tone: "error", text: "需要允许访问所选平台的网站后才能同步" })
+      return
+    }
     setSyncing(true)
     setNotice(null)
     try {
@@ -598,6 +611,11 @@ function App() {
   const platformAction = async (platformId: PlatformId, action: "open" | "retry") => {
     const activeTask = mode === "dynamic" ? center?.currentTask : task
     if (!activeTask) return
+    // Retrying is a click in this page, so it can still ask Chrome for site access.
+    if (action === "retry" && !(await requestPlatformPermissions([platformId]).catch(() => false))) {
+      setNotice({ tone: "error", text: `需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能重试` })
+      return
+    }
     setBusyPlatform(platformId)
     try {
       await request(action === "open"
@@ -615,6 +633,7 @@ function App() {
     platformLoginPending.current.add(platformId)
     setOpeningPlatformLogins([...platformLoginPending.current])
     try {
+      if (!(await requestPlatformPermissions([platformId]))) throw new Error(`需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能检测登录状态`)
       await request<{ tabId: number }>({ type: "OPEN_PLATFORM_LOGIN", platformId })
       setNotice({ tone: "info", text: `请在${PLATFORM_CONFIG[platformId].shortLabel}完成登录，账号会自动更新。` })
     } catch (reason) {
@@ -867,7 +886,7 @@ function App() {
                 <PlatformLogo platformId={platformId} />
                 <span className="platform-copy">
                   <strong>{PLATFORM_CONFIG[platformId].label}</strong>
-                  <small>{account.state === "logged_in" ? (account.name ? `@${account.name}` : "已登录账号") : account.state === "login_required" ? "未登录" : checkingAccounts ? "正在检测账号…" : "暂时无法确认登录状态"}</small>
+                  <small>{account.state === "logged_in" ? (account.name ? `@${account.name}` : "已登录账号") : account.state === "login_required" ? "未登录" : account.state === "permission_missing" ? "尚未授权访问该网站" : checkingAccounts ? "正在检测账号…" : "暂时无法确认登录状态"}</small>
                 </span>
               </label>
               <div className="platform-side">
@@ -885,11 +904,11 @@ function App() {
                     ? <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : "去登录"}</button>
                     : null}
                   {["failed", "login_required"].includes(state.status)
-                    ? <button className="link" disabled={busyPlatform === platformId} onClick={() => void platformAction(platformId, "retry")}>重试</button>
+                    ? <button className="link" disabled={busyPlatform === platformId} onClick={() => void platformAction(platformId, "retry")}>{isPermissionFailure(state.message) ? "授权并重试" : "重试"}</button>
                     : null}
                 </> : account.state === "logged_in"
                   ? <span className="account-dot is-online"><i />已登录</span>
-                  : <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : "去登录"}</button>}
+                  : <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : account.state === "permission_missing" ? "授权并登录" : "去登录"}</button>}
               </div>
               {state?.message && ["failed", "login_required", "filling"].includes(state.status)
                 ? <p className={`platform-message is-${state.status}`} role={state.status === "failed" ? "alert" : "status"}>{state.message}</p>

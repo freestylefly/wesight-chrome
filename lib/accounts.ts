@@ -1,14 +1,20 @@
 import type { AccountRecord } from "~lib/storage"
 import type { ArticlePlatformId, PlatformId } from "~types/protocol"
 import { readAccountPage } from "~lib/account-page"
+import { findPlatformDefinition, type PlatformDefinition } from "~platforms/catalog"
+import { platformsMissingPermission } from "~lib/optional-platforms"
+import { accountPlatformIds } from "~platforms/config"
+import { probeCode, recordDiagnostic, sanitizeUrl, type ProbeMethod, type ProbeTrace } from "~lib/diagnostics"
 
-type Probe = () => Promise<AccountRecord>
+type JsonResponse = { status: number; body: unknown; url: string }
+type Getter = (url: string) => Promise<JsonResponse>
+type Probe = (get: Getter) => Promise<AccountRecord>
 
 const PROBE_TIMEOUT_MS = 8_000
 const SESSION_PROBE_INTERVAL_MS = 300
 const SESSION_LOGIN_STABILITY_MS = 900
 
-async function getJson(url: string): Promise<{ status: number; body: unknown; url: string }> {
+async function getJson(url: string): Promise<JsonResponse> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
   try {
@@ -23,6 +29,29 @@ async function getJson(url: string): Promise<{ status: number; body: unknown; ur
     return { status: response.status, body, url: response.url || url }
   } finally {
     clearTimeout(timer)
+  }
+}
+
+/** getJson that also notes what each request returned, for the diagnostics self-check. */
+function tracedGetter(trace: ProbeTrace): Getter {
+  return async url => {
+    const started = Date.now()
+    try {
+      const response = await getJson(url)
+      trace.steps.push({
+        url: sanitizeUrl(url),
+        status: response.status,
+        finalUrl: sanitizeUrl(response.url),
+        kind: typeof response.body === "string" ? "html" : "json",
+        ...(probeCode(response.body) ? { code: probeCode(response.body) } : {}),
+        ms: Date.now() - started
+      })
+      return response
+    } catch (error) {
+      trace.steps.push({ url: sanitizeUrl(url), status: 0, finalUrl: "", kind: "error", ms: Date.now() - started })
+      trace.note = error instanceof Error && error.name === "AbortError" ? "请求超时" : `请求失败：${error instanceof Error ? error.message : String(error)}`
+      throw error
+    }
   }
 }
 
@@ -186,18 +215,55 @@ export function parseWeiboAccount(html: string): AccountRecord {
 
 // Endpoints mirror the "current user" calls each creator site makes itself.
 // Any unexpected shape falls back to "unknown" so a site change never blocks publishing.
-const PROBES: Record<ArticlePlatformId, Probe> = {
+/**
+ * 51CTO has no JSON "current user" endpoint; the blog home page server-renders
+ * the header account link and a `var isLogin = 0|1` flag.
+ */
+export function parse51ctoAccount(html: string): AccountRecord {
+  const link = /class="user-base"[^>]*>([\s\S]{0,400}?)<\/a>/.exec(html)?.[1]
+  const name = link ? text(/<span[^>]*>([^<]+)<\/span>/.exec(link)?.[1]) : undefined
+  if (name) return loggedIn(name, text(/<img[^>]*\ssrc="([^"]+)"/.exec(link ?? "")?.[1]))
+  return /\bvar\s+isLogin\s*=\s*0\s*;/.test(html) ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+/** 人人都是产品经理: the home page bootstraps `PURE = {..."user_id":"<uid>"...}` (0 when signed out). */
+export function parseWoshipmUserId(html: string): string | null | undefined {
+  const id = /"user_id"\s*:\s*"?(\d+)/.exec(html)?.[1]
+  if (id === undefined) return undefined
+  return id === "0" ? null : id
+}
+
+const PROBES: Partial<Record<PlatformId, Probe>> = {
+  async "woshipm-article"(get) {
+    const home = await get("https://www.woshipm.com/")
+    const uid = typeof home.body === "string" ? parseWoshipmUserId(home.body) : undefined
+    if (uid === null) return LOGIN_REQUIRED
+    if (!uid) return { state: "unknown" }
+    const { body } = await get(`https://www.woshipm.com/api2/user/profile?uid=${uid}`)
+    const user = record(record(record(body).RESULT).userInfoVo)
+    return text(user.nickName) ? loggedIn(text(user.nickName), text(user.avartar)) : { state: "unknown" }
+  },
+  async "weixin-article"(get) {
+    const { body, url } = await get("https://mp.weixin.qq.com/")
+    if (typeof body === "string" && /\/cgi-bin\/home/.test(url)) return parseWeixinAccount(body)
+    // Signed out, the root serves the QR login page without redirecting.
+    return new URL(url).pathname === "/" ? LOGIN_REQUIRED : { state: "unknown" }
+  },
+  async "51cto-article"(get) {
+    const { body } = await get("https://blog.51cto.com/")
+    return typeof body === "string" ? parse51ctoAccount(body) : { state: "unknown" }
+  },
   async "x-article"() {
     return { state: "unknown" }
   },
-  async zhihu() {
-    const { status, body } = await getJson("https://www.zhihu.com/api/v4/me")
+  async zhihu(get) {
+    const { status, body } = await get("https://www.zhihu.com/api/v4/me")
     if (status === 401 || status === 403) return LOGIN_REQUIRED
     const data = record(body)
     return text(data.name) ? loggedIn(text(data.name), text(data.avatar_url)) : { state: "unknown" }
   },
-  async csdn() {
-    const { status, body } = await getJson("https://g-api.csdn.net/community/toolbar-api/v1/get-user-info")
+  async csdn(get) {
+    const { status, body } = await get("https://g-api.csdn.net/community/toolbar-api/v1/get-user-info")
     const root = record(body)
     const data = record(root.data)
     if (root.code === 200 && (text(data.nickName) || text(data.userName))) {
@@ -205,28 +271,28 @@ const PROBES: Record<ArticlePlatformId, Probe> = {
     }
     return status === 401 || root.code === 401 || root.code === 400101 ? LOGIN_REQUIRED : { state: "unknown" }
   },
-  async juejin() {
-    const { body } = await getJson("https://api.juejin.cn/user_api/v1/user/get")
+  async juejin(get) {
+    const { body } = await get("https://api.juejin.cn/user_api/v1/user/get")
     const root = record(body)
     const data = record(root.data)
     if (root.err_no === 0 && text(data.user_name)) return loggedIn(text(data.user_name), text(data.avatar_large))
     return root.err_no === 403 || root.err_no === 1 ? LOGIN_REQUIRED : { state: "unknown" }
   },
-  async "bilibili-article"() {
-    const { body } = await getJson("https://api.bilibili.com/x/web-interface/nav")
+  async "bilibili-article"(get) {
+    const { body } = await get("https://api.bilibili.com/x/web-interface/nav")
     const root = record(body)
     const data = record(root.data)
     if (data.isLogin === true) return loggedIn(text(data.uname), text(data.face))
     return root.code === -101 || data.isLogin === false ? LOGIN_REQUIRED : { state: "unknown" }
   },
-  async toutiao() {
-    const { body } = await getJson("https://mp.toutiao.com/mp/agw/media/get_media_info")
+  async toutiao(get) {
+    const { body } = await get("https://mp.toutiao.com/mp/agw/media/get_media_info")
     const user = record(record(record(body).data).user)
     if (text(user.screen_name)) return loggedIn(text(user.screen_name), text(user.https_avatar_url))
     return { state: "unknown" }
   },
-  async "weibo-article"() {
-    const { status, body, url } = await getJson("https://weibo.com/")
+  async "weibo-article"(get) {
+    const { status, body, url } = await get("https://weibo.com/")
     if (typeof body === "string") {
       const account = parseWeiboAccount(body)
       if (account.state === "logged_in") return account
@@ -238,26 +304,139 @@ const PROBES: Record<ArticlePlatformId, Probe> = {
   }
 }
 
-const pending = new Map<PlatformId, Promise<AccountRecord>>()
+function pathValue(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => record(current)[key], value)
+}
 
-async function probe(platformId: PlatformId): Promise<AccountRecord> {
+/** Generic JSON probe declared in a platform's catalog entry. */
+export async function catalogProbe(probe: NonNullable<PlatformDefinition["account"]>, get: Getter = getJson): Promise<AccountRecord> {
+  const { status, body } = await get(probe.url)
+  const name = probe.name ? text(pathValue(body, probe.name)) : undefined
+  if (name) return loggedIn(name, probe.avatar ? text(pathValue(body, probe.avatar)) : undefined)
+  const code = probe.loggedOut ? pathValue(body, probe.loggedOut.path) : undefined
+  if (code !== undefined && probe.loggedOut?.values.some(value => String(value) === String(code))) return LOGIN_REQUIRED
+  return status === 401 || status === 403 ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+const LOGIN_URL_PATTERN = /\/\/(?:passport|upass|accounts?|sso)\.|\/(?:login|signin|sign_in|sign-in|userAuth)(?:[./?#]|$)|\/uas\/login|\/m\/signin|\/login\.html/i
+
+/** Signed-out check: did the site redirect a member-only page to its login page? */
+export async function loginRedirectProbe(url: string, get: Getter = getJson): Promise<AccountRecord> {
+  const { url: finalUrl } = await get(url)
+  return finalUrl !== url && LOGIN_URL_PATTERN.test(finalUrl) ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+/** 微信公众号: the signed-in home page bootstraps `nick_name` and `head_img`; signed out it stays on the login page. */
+export function parseWeixinAccount(html: string): AccountRecord {
+  const name = text(/\bnick_name\s*:\s*["']([^"']+)["']/.exec(html)?.[1])
+  if (name) return loggedIn(name, text(/\bhead_img\s*:\s*["']([^"']+)["']/.exec(html)?.[1]))
+  return { state: "unknown" }
+}
+
+export interface AccountProbeResult {
+  account: AccountRecord
+  trace: ProbeTrace
+}
+
+const pending = new Map<PlatformId, Promise<AccountProbeResult>>()
+const SESSION_PAGE_PLATFORMS: readonly PlatformId[] = ["jike-post", "xiaohongshu", "x-article"]
+
+async function probe(platformId: PlatformId): Promise<AccountProbeResult> {
+  const trace: ProbeTrace = { method: "none", steps: [] }
+  const done = (account: AccountRecord): AccountProbeResult => ({ account: { ...account, checkedAt: new Date().toISOString() }, trace })
   try {
-    const page = await (platformId === "jike-post" || platformId === "xiaohongshu" || platformId === "x-article" ? probeSessionPages(platformId) : probeOpenPages(platformId))
-      .catch(() => ({ state: "unknown" } as AccountRecord))
-    if (page.state !== "unknown") return { ...page, checkedAt: new Date().toISOString() }
-    const fallback = PROBES[platformId as ArticlePlatformId]
-    return { ...(fallback ? await fallback() : { state: "unknown" as const }), checkedAt: new Date().toISOString() }
-  } catch {
-    return { state: "unknown", checkedAt: new Date().toISOString() }
+    // Without site access the extension can neither read the site's cookies nor its open tabs.
+    if ((await platformsMissingPermission([platformId])).length) {
+      trace.method = "permission"
+      return done({ state: "permission_missing" })
+    }
+    const sessionPage = SESSION_PAGE_PLATFORMS.includes(platformId)
+    const page = await (sessionPage ? probeSessionPages(platformId as SessionPagePlatform) : probeOpenPages(platformId))
+      .catch(error => {
+        trace.note = `读取平台页失败：${error instanceof Error ? error.message : String(error)}`
+        return { state: "unknown" } as AccountRecord
+      })
+    if (page.state !== "unknown") {
+      trace.method = sessionPage ? "session-tab" : "open-tab"
+      return done(page)
+    }
+    const definition = findPlatformDefinition(platformId)
+    const declared = definition?.account
+    const loginCheck = definition?.loginCheckUrl
+    const get = tracedGetter(trace)
+    const custom = PROBES[platformId]
+    let method: ProbeMethod = sessionPage || PAGE_PATTERNS[platformId] ? (sessionPage ? "session-tab" : "open-tab") : "none"
+    let fallback: (() => Promise<AccountRecord>) | undefined
+    if (custom) fallback = () => custom(get)
+    else if (declared) { method = "api"; fallback = () => catalogProbe(declared, get) }
+    else if (loginCheck) { method = "login-redirect"; fallback = () => loginRedirectProbe(loginCheck, get) }
+    const account = fallback ? await fallback() : { state: "unknown" as const }
+    // Site-specific probes read either a JSON endpoint or the server-rendered home page.
+    if (custom && trace.steps.length) method = trace.steps.some(step => step.kind === "json") ? "api" : "homepage-html"
+    trace.method = method
+    if (!fallback && method === "none") trace.note = "该平台没有登录检测器"
+    else if (account.state === "unknown" && !trace.note) trace.note = "检测结果不明确（返回内容里没有可识别的登录信息）"
+    return done(account)
+  } catch (error) {
+    trace.note ??= `检测异常：${error instanceof Error ? error.message : String(error)}`
+    return done({ state: "unknown" })
   }
 }
 
-export function probeAccount(platformId: PlatformId): Promise<AccountRecord> {
-  if (platformId === "weibo-post") return probeAccount("weibo-article")
-  if (platformId === "x-post") return probeAccount("x-article")
+function hasOwnProbe(platformId: PlatformId): boolean {
+  const definition = findPlatformDefinition(platformId)
+  return Boolean(PROBES[platformId] || PAGE_PATTERNS[platformId] || definition?.account || definition?.loginCheckUrl)
+}
+
+/** A platform that shares its account with another (e.g. 头条动态 and 头条号) reuses that platform's probe. */
+function probeSource(platformId: PlatformId): PlatformId {
+  if (platformId === "weibo-post") return "weibo-article"
+  if (platformId === "x-post") return "x-article"
+  if (hasOwnProbe(platformId)) return platformId
+  return accountPlatformIds(platformId).find(id => id !== platformId && hasOwnProbe(id)) ?? platformId
+}
+
+// The login monitor polls every few seconds; only a changed outcome is worth a diagnostic line.
+const lastLogged = new Map<PlatformId, string>()
+
+function logProbe(platformId: PlatformId, result: AccountProbeResult): void {
+  const { account, trace } = result
+  const step = trace.steps.at(-1)
+  const signature = `${account.state}|${trace.method}|${step?.status ?? ""}|${step?.finalUrl ?? ""}|${step?.code ?? ""}`
+  if (lastLogged.get(platformId) === signature) return
+  lastLogged.set(platformId, signature)
+  void recordDiagnostic(account.state === "unknown" ? "warn" : "info", "login", platformId, `登录检测：${account.state}`, {
+    method: trace.method,
+    source: trace.source,
+    steps: trace.steps.map(item => `${item.kind} ${item.status} ${item.url} → ${item.finalUrl}${item.code ? ` ${item.code}` : ""} (${item.ms}ms)`),
+    nameRead: Boolean(account.name),
+    note: trace.note
+  })
+}
+
+/** Account state plus how it was decided; used by the diagnostics self-check. */
+export async function probeAccountDetailed(platformId: PlatformId): Promise<AccountProbeResult> {
+  const source = probeSource(platformId)
+  if (source !== platformId) {
+    const shared = await probeAccountDetailed(source)
+    return { account: shared.account, trace: { ...shared.trace, method: "shared-account", source, note: shared.trace.note ?? `沿用${source}（检测方式：${shared.trace.method}）` } }
+  }
   const active = pending.get(platformId)
   if (active) return active
-  const result = probe(platformId).finally(() => pending.delete(platformId))
+  const result = probe(platformId).then(value => { logProbe(platformId, value); return value })
+    .finally(() => pending.delete(platformId))
   pending.set(platformId, result)
+  return result
+}
+
+const accountPending = new Map<PlatformId, Promise<AccountRecord>>()
+
+/** Concurrent callers (and platforms sharing one account) get the same promise. */
+export function probeAccount(platformId: PlatformId): Promise<AccountRecord> {
+  const source = probeSource(platformId)
+  const active = accountPending.get(source)
+  if (active) return active
+  const result = probeAccountDetailed(source).then(value => value.account).finally(() => accountPending.delete(source))
+  accountPending.set(source, result)
   return result
 }

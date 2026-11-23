@@ -4,3 +4,4 @@ build/
 *.zip
 *.tsbuildinfo
 .DS_Store
+.env.local

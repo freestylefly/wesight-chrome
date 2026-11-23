@@ -30,7 +30,8 @@ describe("publish task protocol", () => {
     expect(states.zhihu.status).toBe("cancelled")
   })
   test("keeps protocol v1 while accepting article and dynamic platform ids", () => {
-    expect(PLATFORM_IDS).toEqual([
+    // Shipped ids stay first and unchanged; later batches append to the catalog.
+    expect(PLATFORM_IDS.slice(0, 11)).toEqual([
       "zhihu", "csdn", "juejin", "bilibili-article", "toutiao", "weibo-article", "x-article", "xiaohongshu", "weibo-post", "jike-post", "x-post"
     ])
     expect(isPublishTaskV1({ ...task(), targets: [...PLATFORM_IDS] })).toBe(true)

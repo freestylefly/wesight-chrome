@@ -1,4 +1,4 @@
-import { parseWeiboAccount, probeAccount } from "~lib/accounts"
+import { parse51ctoAccount, parseWeiboAccount, probeAccount } from "~lib/accounts"
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
 const query = vi.fn()
@@ -6,6 +6,7 @@ const executeScript = vi.fn()
 const createTab = vi.fn()
 const getTab = vi.fn()
 const removeTab = vi.fn()
+const permissionContains = vi.fn()
 
 beforeEach(() => {
   query.mockReset().mockResolvedValue([])
@@ -13,12 +14,65 @@ beforeEach(() => {
   createTab.mockReset().mockResolvedValue({ id: 100, url: "https://web.okjike.com/", status: "loading", active: false })
   getTab.mockReset().mockImplementation(async (id: number) => ({ id, url: "https://web.okjike.com/", status: "complete", active: false }))
   removeTab.mockReset().mockResolvedValue(undefined)
-  vi.stubGlobal("chrome", { tabs: { query, create: createTab, get: getTab, remove: removeTab }, scripting: { executeScript } })
+  permissionContains.mockReset().mockResolvedValue(true)
+  vi.stubGlobal("chrome", { tabs: { query, create: createTab, get: getTab, remove: removeTab }, scripting: { executeScript }, permissions: { contains: permissionContains } })
   vi.stubGlobal("fetch", vi.fn(async () => json({})))
 })
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("browser account probes", () => {
+  test("reads the 人人都是产品经理 account through the bootstrapped user id", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(`<script>var PURE = {"ajax_url":"x","user_id":"42"};</script>`))
+      .mockResolvedValueOnce(json({ CODE: 200, RESULT: { userInfoVo: { uid: 42, nickName: "向明", avartar: "https://example.com/w.png" } } }))
+    expect(await probeAccount("woshipm-article")).toMatchObject({ state: "logged_in", name: "向明", avatar: "https://example.com/w.png" })
+    expect(fetch).toHaveBeenLastCalledWith("https://www.woshipm.com/api2/user/profile?uid=42", expect.anything())
+  })
+  const redirected = (url: string, body = "") => ({ status: 200, url, text: async () => body }) as unknown as Response
+  test("reports 未登录 when a member page redirects to the site's login page", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://account.cnblogs.com/signin?returnUrl=x"))
+    expect(await probeAccount("cnblogs-article")).toMatchObject({ state: "login_required" })
+    vi.mocked(fetch).mockResolvedValue(redirected("https://i.cnblogs.com/"))
+    expect(await probeAccount("cnblogs-article")).toMatchObject({ state: "unknown" })
+  })
+  test("shares the login check between platforms on one account", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://wx.zsxq.com/login"))
+    expect(await probeAccount("zsxq-post")).toMatchObject({ state: "login_required" })
+    expect(fetch).toHaveBeenCalledWith("https://wx.zsxq.com/", expect.anything())
+  })
+  test("reads the 公众号 account from the signed-in home page", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://mp.weixin.qq.com/cgi-bin/home?t=home/index&token=1", `wx.cgiData = { nick_name: "向明", head_img: 'https://wx.qlogo.cn/a.png', user_name: "gh_x" }`))
+    expect(await probeAccount("weixin-article")).toMatchObject({ state: "logged_in", name: "向明", avatar: "https://wx.qlogo.cn/a.png" })
+    vi.mocked(fetch).mockResolvedValue(redirected("https://mp.weixin.qq.com/", "<html>login</html>"))
+    expect(await probeAccount("weixin-article")).toMatchObject({ state: "login_required" })
+  })
+  test("reads the 懂车号 media account and the 阿里云 signed-out code", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ status: 0, data: { media: { name: "向明", https_avatar_url: "https://example.com/d.png" }, user: { screen_name: "用户1" } } }))
+    expect(await probeAccount("dongchedi-article")).toMatchObject({ state: "logged_in", name: "向明" })
+    vi.mocked(fetch).mockResolvedValue(json({ code: "40001", message: "用户未登录或登录已失效", success: false }))
+    expect(await probeAccount("aliyun-article")).toMatchObject({ state: "login_required" })
+  })
+  test("reads the 51CTO account from the server-rendered blog header", async () => {
+    const html = `<script>var user_id = 1; var isLogin = 1;</script><div class="ins"> <a class="user-base" href="https://blog.51cto.com/u_1" target="_blank"> <img data-uid="1" src="https://ucenter.51cto.com/images/noavatar_middle.gif" /><span>mb6b03a4b480522</span> </a>`
+    vi.mocked(fetch).mockResolvedValue(new Response(html))
+    expect(await probeAccount("51cto-article")).toMatchObject({ state: "logged_in", name: "mb6b03a4b480522", avatar: "https://ucenter.51cto.com/images/noavatar_middle.gif" })
+    expect(parse51ctoAccount("<script>var isLogin = 0;</script>")).toEqual({ state: "login_required" })
+    expect(parse51ctoAccount("<html></html>")).toEqual({ state: "unknown" })
+  })
+  test("reports missing site access for an optional platform without probing it", async () => {
+    permissionContains.mockResolvedValue(false)
+    expect(await probeAccount("douyin-post")).toMatchObject({ state: "permission_missing" })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  test("reads the Douyin creator account through the catalog probe", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ status_code: 0, user: { nickname: "抖音作者", avatar_thumb: { url_list: ["https://example.com/a.jpg"] } } }))
+    expect(await probeAccount("douyin-article")).toMatchObject({ state: "logged_in", name: "抖音作者", avatar: "https://example.com/a.jpg" })
+    expect(fetch).toHaveBeenCalledWith("https://creator.douyin.com/web/api/media/user/info/", expect.anything())
+  })
+  test("reads the InfoQ account through the catalog probe", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ code: 0, data: { nick: "InfoQ 作者", avatar: "https://example.com/q.png" } }))
+    expect(await probeAccount("infoq-article")).toMatchObject({ state: "logged_in", name: "InfoQ 作者" })
+  })
   test("reads an already open CSDN page without requiring an extension receiver or another tab", async () => {
     query.mockResolvedValue([{ id: 1 }])
     executeScript.mockResolvedValue([{ result: { state: "logged_in", name: "创作者" } }])

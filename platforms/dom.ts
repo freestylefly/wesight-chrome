@@ -1,13 +1,17 @@
 import { platformPlainText, replaceAssetTokens, sanitizePlatformHtml, truncateTitle } from "~lib/content"
 import type { PrepareDraftContext } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
+import { noteSelector } from "~lib/page-trace"
 
 export async function waitForAny<T extends Element>(selectors: string[], timeoutMs = 20_000): Promise<T | null> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     for (const selector of selectors) {
       const element = document.querySelector<T>(selector)
-      if (element) return element
+      if (element) {
+        noteSelector(selector)
+        return element
+      }
     }
     await new Promise(resolve => window.setTimeout(resolve, 250))
   }

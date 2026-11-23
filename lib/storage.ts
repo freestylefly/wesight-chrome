@@ -66,7 +66,7 @@ export interface ComposeBridgeRecord extends BridgeTaskAccess {
   draftId: string
 }
 
-export type AccountState = "unknown" | "logged_in" | "login_required"
+export type AccountState = "unknown" | "logged_in" | "login_required" | "permission_missing"
 
 export interface AccountRecord {
   state: AccountState

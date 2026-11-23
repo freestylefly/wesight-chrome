@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<body>
+<main>
+  <div class="tabs"><div>上传视频</div><div data-reveals=".upload">上传图文</div></div>
+  <section class="upload" hidden>
+    <input type="file" accept="image/*" multiple data-reveals=".form">
+    <div class="previews"></div>
+  </section>
+  <section class="form" hidden>
+    <div id="work-description-edit" contenteditable="true" placeholder="添加合适的话题和描述" data-testid="editor"></div>
+    <button type="button" class="publish">发布</button>
+  </section>
+</main>
+</body>
+</html>

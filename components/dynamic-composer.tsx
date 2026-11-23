@@ -1,3 +1,5 @@
+import { isPermissionFailure, requestPlatformPermissions } from "~lib/optional-platforms"
+import { platformDefinition } from "~platforms/catalog"
 import {
   AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2,
   ExternalLink, Eye, FileVideo2, Hash, ImagePlus, Info, LoaderCircle, Play,
@@ -43,12 +45,15 @@ export interface DynamicComposerProps {
   onTaskStarted?: (task: TaskSummary) => void
 }
 
-const BRAND: Record<DynamicPlatformId, { name: string; glyph: string; color: string; caption: string }> = {
-  xiaohongshu: { name: "小红书", glyph: "小红书", color: "#ed3658", caption: "把灵感写成一篇笔记" },
-  "weibo-post": { name: "微博", glyph: "微", color: "#e94b42", caption: "分享此刻的新鲜事" },
-  "jike-post": { name: "即刻", glyph: "J", color: "#e6be1f", caption: "和同好聊聊你的发现" },
-  "x-post": { name: "X", glyph: "X", color: "#101419", caption: "标题会合并到正文，话题默认不同步到 X，按 X 规则计数" }
-}
+const BRAND = Object.fromEntries(DYNAMIC_PLATFORM_IDS.map(id => {
+  const definition = platformDefinition(id)
+  return [id, {
+    name: definition.shortLabel.replace(/动态$/, ""),
+    glyph: definition.brand?.glyph ?? definition.shortLabel.slice(0, 1),
+    color: definition.brand?.color ?? "#475467",
+    caption: definition.brand?.caption ?? `同步到${definition.label}`
+  }]
+})) as Record<DynamicPlatformId, { name: string; glyph: string; color: string; caption: string }>
 const STATUS: Record<PlatformTaskState["status"], string> = {
   queued: "等待中", opening: "打开中", login_required: "需要登录", filling: "同步中", ready: "待发布", failed: "失败", cancelled: "已取消"
 }
@@ -332,6 +337,7 @@ export default function DynamicComposer({ accounts, access, auth, task, checking
     if (!auth?.user || !access || access.maxTargets === 0) { onLogin(); return }
     if (limit !== null && draft.selected.length > limit) { onUpgrade(draft.selected); return }
     if (errors.length) { onNotice({ tone: "error", text: errors[0]! }); return }
+    if (!(await requestPlatformPermissions(draft.selected).catch(() => false))) { onNotice({ tone: "error", text: "需要允许访问所选平台的网站后才能同步" }); return }
     setSyncing(true)
     onNotice(null)
     try {
@@ -449,9 +455,9 @@ export default function DynamicComposer({ accounts, access, auth, task, checking
         const state = matchingTask?.targets?.includes(id) ? matchingTask.platforms[id] : null
         const openingLogin = openingPlatformLogins.includes(id)
         const hasCircle = id === "jike-post" && active
-        const loginButton = <button disabled={openingLogin} onClick={() => onPlatformLogin(id)}>{openingLogin ? "正在打开…" : "去登录"}{openingLogin ? <LoaderCircle className="spin" /> : <ExternalLink />}</button>
-        return <div key={id} className={`dc-platform ${active ? "is-selected" : ""}`}><div className={`dc-platform-row ${hasCircle ? "has-circle" : ""}`}><label className="dc-platform-account"><input type="checkbox" checked={active} onChange={() => togglePlatform(id)} /><span className="dc-check">{active ? <Check /> : null}</span><PlatformMark id={id} /><span className="dc-platform-name"><strong>{BRAND[id].name}</strong><small>{account.state === "logged_in" ? account.name ? `@${account.name}` : "已登录账号" : account.state === "login_required" ? "未登录" : "暂未确认登录状态"}</small></span></label>{hasCircle ? <label className="dc-circle"><span>发布圈子</span><input aria-label="即刻发布圈子" value={draft.jikeCircle} placeholder="选填圈子名称" onChange={event => update({ jikeCircle: event.target.value })} /></label> : null}<div className="dc-platform-status">{state ? <span className={`is-${state.status}`}>{state.status === "ready" ? <CheckCircle2 /> : ["failed", "login_required"].includes(state.status) ? <AlertCircle /> : <LoaderCircle className="spin" />}{STATUS[state.status]}</span> : account.state === "logged_in" ? <span className="is-online"><i />已登录</span> : loginButton}</div></div>
-          {state ? <div className="dc-task-detail">{state.message ? <p className={`is-${state.status}`}>{state.message}</p> : null}{state.warnings.length ? <p>{state.warnings.join("；")}</p> : null}<div>{state.status === "login_required" ? loginButton : ["ready", "filling", "failed"].includes(state.status) ? <button onClick={() => onPlatformAction(id, "open")}>打开编辑页<ExternalLink /></button> : null}{state.status === "failed" && account.state !== "logged_in" ? loginButton : null}{["failed", "login_required"].includes(state.status) ? <button onClick={() => onPlatformAction(id, "retry")}>重试</button> : null}</div></div> : null}
+        const loginButton = <button disabled={openingLogin} onClick={() => onPlatformLogin(id)}>{openingLogin ? "正在打开…" : account.state === "permission_missing" ? "授权并登录" : "去登录"}{openingLogin ? <LoaderCircle className="spin" /> : <ExternalLink />}</button>
+        return <div key={id} className={`dc-platform ${active ? "is-selected" : ""}`}><div className={`dc-platform-row ${hasCircle ? "has-circle" : ""}`}><label className="dc-platform-account"><input type="checkbox" checked={active} onChange={() => togglePlatform(id)} /><span className="dc-check">{active ? <Check /> : null}</span><PlatformMark id={id} /><span className="dc-platform-name"><strong>{BRAND[id].name}</strong><small>{account.state === "logged_in" ? account.name ? `@${account.name}` : "已登录账号" : account.state === "login_required" ? "未登录" : account.state === "permission_missing" ? "尚未授权访问该网站" : "暂未确认登录状态"}</small></span></label>{hasCircle ? <label className="dc-circle"><span>发布圈子</span><input aria-label="即刻发布圈子" value={draft.jikeCircle} placeholder="选填圈子名称" onChange={event => update({ jikeCircle: event.target.value })} /></label> : null}<div className="dc-platform-status">{state ? <span className={`is-${state.status}`}>{state.status === "ready" ? <CheckCircle2 /> : ["failed", "login_required"].includes(state.status) ? <AlertCircle /> : <LoaderCircle className="spin" />}{STATUS[state.status]}</span> : account.state === "logged_in" ? <span className="is-online"><i />已登录</span> : loginButton}</div></div>
+          {state ? <div className="dc-task-detail">{state.message ? <p className={`is-${state.status}`}>{state.message}</p> : null}{state.warnings.length ? <p>{state.warnings.join("；")}</p> : null}<div>{state.status === "login_required" ? loginButton : ["ready", "filling", "failed"].includes(state.status) ? <button onClick={() => onPlatformAction(id, "open")}>打开编辑页<ExternalLink /></button> : null}{state.status === "failed" && account.state !== "logged_in" ? loginButton : null}{["failed", "login_required"].includes(state.status) ? <button onClick={() => onPlatformAction(id, "retry")}>{isPermissionFailure(state.message) ? "授权并重试" : "重试"}</button> : null}</div></div> : null}
         </div>
       })}</div>
       {selected.includes("x-post") ? <div className="dc-x-hint"><Info /><span>X 动态支持最多 4 张图片，单张不超过 5 MB；普通动态最多 280 字符（中文通常计 2）；话题默认不同步到 X，需要的话可直接在正文里写 #话题。{xSkipped ? `已自动跳过 X 不支持格式的 ${xSkipped} 张图片，其他平台仍保留。` : "支持 PNG、JPEG、WebP 图片。"}</span></div> : null}

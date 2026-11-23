@@ -2,7 +2,21 @@ import { xPublicScriptUrl } from "~lib/x-article-api"
 import { normalizeDraft } from "~lib/article-preparation"
 import { completeWeSightLogin, loginPending, publishAuthState, signOutWeSight, startWeSightLogin, verifyCloudIdentity } from "~lib/cloud-auth"
 import type { WeSightAuthState } from "~types/auth"
-import { probeAccount } from "~lib/accounts"
+import { probeAccount, probeAccountDetailed } from "~lib/accounts"
+import {
+  appendEvents,
+  clearEvents,
+  errorData,
+  normalizeIncomingEvent,
+  readEvents,
+  recordDiagnostic,
+  selfCheckRow,
+  SELF_CHECK_KEY,
+  setSensitiveTerms,
+  type DiagnosticEvent,
+  type SelfCheckReport
+} from "~lib/diagnostics"
+import { collectEnvironment, type DiagnosticEnvironment } from "~lib/diagnostics-env"
 import { fetchAccess, fetchAsset, fetchTask, getPairing, pairWithBridge, postTaskEvent } from "~lib/bridge-client"
 import { assertBridgeSender, BRIDGE_HEARTBEAT_ALARM, BridgeConnectionMonitor } from "~lib/bridge-connection"
 import { shouldMirrorBridgeEvent } from "~lib/bridge-event-policy"
@@ -20,6 +34,7 @@ import {
 } from "~lib/draft-store"
 import { writeLog } from "~lib/logs"
 import { focusOrOpenPlatformTab } from "~lib/open-platform-tab"
+import { assertPlatformPermission, isPermissionFailure, PlatformPermissionError, platformsMissingPermission, syncOptionalContentScripts } from "~lib/optional-platforms"
 import { taskForPlatform } from "~lib/platform-task"
 import { PlatformLoginMonitor } from "~lib/platform-login"
 import { sendTabMessageWithRetry } from "~lib/tab-message"
@@ -96,6 +111,45 @@ function mutateAccounts(update: (accounts: AccountStateMap) => void): Promise<Ac
   })
   accountWrites = written.catch(() => undefined)
   return written
+}
+
+// ——— Diagnostics: draft timeline per task platform ———
+const draftClocks = new Map<string, number>()
+const retryCounts = new Map<string, number>()
+
+function traceStatus(
+  task: PublishTaskV1,
+  platformId: PlatformId,
+  status: PlatformTaskStatus,
+  values: Partial<{ message: string; draftUrl: string; warnings: string[] }>
+): void {
+  setSensitiveTerms([task.article.title, ...task.article.tags, ...task.assets.map(asset => asset.fileName), task.source?.vaultPath])
+  const key = `${task.taskId}:${platformId}`
+  if (status === "opening" && !draftClocks.has(key)) draftClocks.set(key, Date.now())
+  const started = draftClocks.get(key)
+  const level = status === "failed" ? "error" : status === "login_required" || values.warnings?.length ? "warn" : "info"
+  void recordDiagnostic(level, "draft", platformId, `状态：${status}`, {
+    status,
+    message: values.message,
+    sinceOpenMs: started === undefined ? undefined : Date.now() - started,
+    draftUrl: values.draftUrl,
+    warnings: values.warnings?.length ? values.warnings : undefined,
+    retries: retryCounts.get(key)
+  })
+  if (status === "ready" || status === "cancelled") draftClocks.delete(key)
+}
+
+// An adapter that keeps asking to open the same editor URL is being redirected
+// away from it (expired session, unavailable editor); stop instead of reloading forever.
+const EDITOR_REDIRECT_LIMIT = 2
+const editorRedirects = new Map<string, { url: string; count: number }>()
+
+function editorRedirectRepeated(taskId: string, platformId: PlatformId, url: string): boolean {
+  const key = `${taskId}:${platformId}`
+  const previous = editorRedirects.get(key)
+  const count = previous?.url === url ? previous.count + 1 : 1
+  editorRedirects.set(key, { url, count })
+  return count > EDITOR_REDIRECT_LIMIT
 }
 
 function assignAccount(accounts: AccountStateMap, platformId: PlatformId, account: AccountRecord): void {
@@ -245,6 +299,7 @@ async function reportStatus(
   values: Partial<{ message: string; tabId: number; draftUrl: string; warnings: string[] }> = {}
 ): Promise<void> {
   await setPlatformStatus(runtime.task.taskId, platformId, status, values)
+  traceStatus(runtime.task, platformId, status, values)
   const event: PlatformTaskEventV1 = {
     protocolVersion: PROTOCOL_VERSION,
     taskId: runtime.task.taskId,
@@ -348,6 +403,7 @@ async function prepareXiaohongshuOnCompletedTab(tabId: number, url?: string): Pr
 }
 
 async function createPlatformTabs(runtime: RuntimeTask, windowId?: number): Promise<void> {
+  let permissionMissing = false
   await createTaskTabs(runtime.task.targets, {
     windowId,
     beforeOpen: platformId => reportStatus(runtime, platformId, "opening", { message: "正在打开编辑页" }),
@@ -356,10 +412,48 @@ async function createPlatformTabs(runtime: RuntimeTask, windowId?: number): Prom
     },
     onFailure: async (platformId, error) => {
       const message = error instanceof Error ? error.message : String(error)
-      await reportStatus(runtime, platformId, "failed", { message: `打开编辑页失败：${message}` })
+      // Only a click in an extension page can grant site access, so send the
+      // user to the publish center, where the failed row offers 授权并重试.
+      if (error instanceof PlatformPermissionError) permissionMissing = true
+      await reportStatus(runtime, platformId, "failed", { message: error instanceof PlatformPermissionError ? message : `打开编辑页失败：${message}` })
       await writeLog("error", platformId, `打开编辑页失败：${message}`)
     }
   })
+  if (permissionMissing) await showPermissionPrompt(runtime, windowId)
+}
+
+/**
+ * Bring forward the page that lists this task, so the user can click 授权并重试:
+ * the publish center for compose tasks, the toolbar popup for Obsidian tasks.
+ */
+async function showPermissionPrompt(runtime: RuntimeTask, windowId?: number): Promise<void> {
+  const summary = await getTaskSummary(runtime.task.taskId)
+  if (summary?.origin === "compose") {
+    await openPublishCenter(windowId)
+    return
+  }
+  try {
+    await chrome.action.openPopup(windowId === undefined ? undefined : { windowId })
+  } catch {
+    await chrome.action.setBadgeText({ text: "!" }).catch(() => undefined)
+    await chrome.action.setBadgeBackgroundColor({ color: "#d92d20" }).catch(() => undefined)
+  }
+}
+
+// Retrying twice in a row would open two editor tabs; the page's own retry and
+// the permissions.onAdded retry below can both fire for one 授权并重试 click.
+const RETRY_DEDUP_MS = 3_000
+const recentRetries = new Map<string, number>()
+
+/** After the user grants site access, retry every platform that failed for lack of it. */
+async function retryGrantedPlatforms(): Promise<void> {
+  const summary = await getTaskSummary()
+  if (!summary) return
+  const failed = (summary.targets ?? []).filter(id => summary.platforms[id]?.status === "failed" && isPermissionFailure(summary.platforms[id]?.message))
+  const missingNow = new Set(await platformsMissingPermission(failed))
+  for (const platformId of failed.filter(id => !missingNow.has(id))) {
+    await retryPlatform(summary.taskId, platformId).catch(error => writeLog("warn", platformId, `授权后自动重试失败：${error instanceof Error ? error.message : String(error)}`))
+  }
 }
 
 async function startTask(
@@ -432,7 +526,12 @@ async function startTask(
     return
   }
   if (handoff.retryPlatform) {
-    await retryPlatform(task.taskId, handoff.retryPlatform)
+    try {
+      await retryPlatform(task.taskId, handoff.retryPlatform)
+    } catch (error) {
+      if (!(error instanceof PlatformPermissionError)) throw error
+      await showPermissionPrompt(runtime, windowId)
+    }
     return
   }
   await createPlatformTabs(runtime, windowId)
@@ -595,12 +694,26 @@ async function startDynamicSync(targets: DynamicPlatformId[], windowId?: number)
 }
 
 async function retryPlatform(taskId: string, platformId: PlatformId): Promise<void> {
+  const retryKey = `${taskId}:${platformId}`
+  const lastRetry = recentRetries.get(retryKey)
+  if (lastRetry !== undefined && Date.now() - lastRetry < RETRY_DEDUP_MS) return
+  recentRetries.set(retryKey, Date.now())
+  retryCounts.set(retryKey, (retryCounts.get(retryKey) ?? 0) + 1)
+  draftClocks.delete(retryKey)
+  void recordDiagnostic("info", "event", platformId, `重试第 ${retryCounts.get(retryKey)} 次`)
   const { auth } = await currentAccess(true)
   if (!auth.user) throw new Error("请先登录 WeSight 后重试")
   const runtime = await ensureRuntime(taskId)
   if (!runtime.task.targets.includes(platformId)) throw new Error("该平台不在当前任务中")
   const summary = await getTaskSummary(taskId)
   const existingTabId = summary?.platforms[platformId].tabId
+  try {
+    await assertPlatformPermission(platformId, PLATFORM_CONFIG[platformId].label)
+  } catch (error) {
+    void recordDiagnostic("warn", "event", platformId, "站点授权缺失，重试中止", { permission: error instanceof PlatformPermissionError })
+    await reportStatus(runtime, platformId, "failed", { message: error instanceof Error ? error.message : String(error) })
+    throw error
+  }
   await reportStatus(runtime, platformId, "opening", { message: "正在重新打开编辑页" })
   if (existingTabId !== undefined) {
     if (platformId === "x-post") {
@@ -670,7 +783,7 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.MessageSender): Promise<unknown> {
-  if (["WESIGHT_LOGIN", "WESIGHT_LOGOUT", "START_COMPOSE_SYNC", "START_DYNAMIC_SYNC", "GET_PUBLISH_STATE", "OPEN_PLATFORM_LOGIN"].includes(message.type)
+  if (["WESIGHT_LOGIN", "WESIGHT_LOGOUT", "START_COMPOSE_SYNC", "START_DYNAMIC_SYNC", "GET_PUBLISH_STATE", "OPEN_PLATFORM_LOGIN", "GET_DIAGNOSTICS", "RUN_SELF_CHECK", "CLEAR_DIAGNOSTICS"].includes(message.type)
     && !sender.url?.startsWith(chrome.runtime.getURL(""))) throw new Error("请求来源无效")
   switch (message.type) {
     case "CONNECT_BRIDGE": {
@@ -729,6 +842,7 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       await openPublishCenter(sender.tab?.windowId)
       return true
     case "RETRY_PLATFORM":
+      editorRedirects.delete(`${message.taskId}:${message.platformId}`)
       await retryPlatform(message.taskId, message.platformId)
       return true
     case "OPEN_TASK_TABS":
@@ -764,11 +878,26 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       }
       const runtime = await ensureRuntime(summary.taskId)
       if (platformId === "xiaohongshu" && !runtime.task.media?.videoAssetId) return false
+      const opened = draftClocks.get(`${summary.taskId}:${platformId}`)
+      void recordDiagnostic("info", "draft", platformId, "页面脚本就绪", {
+        pageUrl: sender.url ?? message.url,
+        sinceOpenMs: opened === undefined ? undefined : Date.now() - opened
+      })
       await sendPrepare(tabId, runtime, platformId)
       return true
     }
     case "PLATFORM_RESULT": {
       const runtime = await ensureRuntime(message.taskId)
+      if (message.editorPending && message.draftUrl && editorRedirectRepeated(message.taskId, message.platformId, message.draftUrl)) {
+        const failure = `${PLATFORM_CONFIG[message.platformId].shortLabel}编辑页多次跳转失败，请手动打开编辑页后点重试`
+        await reportStatus(runtime, message.platformId, "failed", { tabId: sender.tab?.id, message: failure })
+        await recordDiagnostic("error", "event", message.platformId, "编辑页重定向循环", {
+          draftUrl: message.draftUrl,
+          pageUrl: sender.tab?.url,
+          limit: EDITOR_REDIRECT_LIMIT
+        })
+        return true
+      }
       await updateAccount(message.platformId, "logged_in")
       const tabId = sender.tab?.id
       const currentUrl = message.platformId === "x-post" && tabId !== undefined
@@ -777,7 +906,7 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
         tabId,
         draftUrl: message.draftUrl ?? currentUrl,
         warnings: message.warnings,
-        message: message.editorPending ? "正在打开 X Post 编辑窗口" : message.warnings.length ? "内容已填充，请检查提示后发布" : "内容已准备，请检查后发布"
+        message: message.editorPending ? `正在打开${PLATFORM_CONFIG[message.platformId].shortLabel}编辑窗口` : message.warnings.length ? "内容已填充，请检查提示后发布" : "内容已准备，请检查后发布"
       })
       if (tabId !== undefined && message.draftUrl && message.draftUrl !== currentUrl) {
         globalThis.setTimeout(() => {
@@ -960,8 +1089,70 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       }
       return url
     }
+    case "DIAGNOSTIC_EVENTS": {
+      if (sender.id !== chrome.runtime.id || !Array.isArray(message.events)) return false
+      const events = message.events.slice(0, 50).map(normalizeIncomingEvent).filter((event): event is DiagnosticEvent => Boolean(event))
+      await appendEvents(events)
+      return true
+    }
+    case "GET_DIAGNOSTICS": {
+      const report = await chrome.storage.local.get(SELF_CHECK_KEY)
+      return {
+        environment: await diagnosticEnvironment(),
+        selfCheck: (report[SELF_CHECK_KEY] as SelfCheckReport | undefined) ?? null,
+        events: await readEvents()
+      }
+    }
+    case "RUN_SELF_CHECK":
+      return runSelfCheck()
+    case "CLEAR_DIAGNOSTICS":
+      await clearEvents()
+      return true
+    case "OPEN_DIAGNOSTICS":
+      await chrome.tabs.create({ url: chrome.runtime.getURL("tabs/diagnostics.html") })
+      return true
   }
 }
+
+async function diagnosticEnvironment(): Promise<DiagnosticEnvironment> {
+  const { access, connected, auth } = await currentAccess(false)
+  const billing = access?.billing
+  return collectEnvironment({
+    paired: Boolean(await getPairing()),
+    connected,
+    signedIn: Boolean(auth.user),
+    source: auth.source,
+    membership: access ? `${access.state}${billing ? `，会员${billing.active ? "有效" : "无效"}` : ""}` : "unknown"
+  })
+}
+
+async function runSelfCheck(): Promise<SelfCheckReport> {
+  const started = Date.now()
+  const rows = await mapLimited([...PLATFORM_IDS], 4, async platformId => {
+    const begin = Date.now()
+    const { account, trace } = await probeAccountDetailed(platformId)
+    return selfCheckRow(platformId, PLATFORM_CONFIG[platformId].label, account, trace, Date.now() - begin)
+  })
+  const report: SelfCheckReport = { at: new Date().toISOString(), durationMs: Date.now() - started, rows }
+  await chrome.storage.local.set({ [SELF_CHECK_KEY]: report })
+  await recordDiagnostic("info", "login", "self-check", "平台自检完成", {
+    total: rows.length,
+    loggedIn: rows.filter(row => row.result === "logged_in").length,
+    loginRequired: rows.filter(row => row.result === "login_required").length,
+    permissionMissing: rows.filter(row => row.result === "permission_missing").length,
+    unknown: rows.filter(row => row.result === "unknown").length
+  })
+  return report
+}
+
+// Uncaught errors in the service worker itself.
+self.addEventListener("error", event => {
+  void recordDiagnostic("error", "error", "background", `未捕获异常：${event.message}`, errorData(event.error))
+})
+self.addEventListener("unhandledrejection", event => {
+  const reason: unknown = event.reason
+  void recordDiagnostic("error", "error", "background", `未处理的 Promise 拒绝：${reason instanceof Error ? reason.message : String(reason)}`, errorData(reason))
+})
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, sender, sendResponse) => {
   void handleMessage(message, sender)
@@ -1008,6 +1199,21 @@ void platformLoginMonitor.resume().catch(() => undefined)
 chrome.alarms.onAlarm.addListener(alarm => {
   if (alarm.name === BRIDGE_HEARTBEAT_ALARM) void bridgeConnection.refresh().catch(() => undefined)
 })
-chrome.runtime.onStartup.addListener(() => { void bridgeConnection.resume().catch(() => undefined) })
-chrome.runtime.onInstalled.addListener(() => { void bridgeConnection.resume().catch(() => undefined) })
+const syncOptionalPlatforms = () => { void syncOptionalContentScripts().catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`)) }
+chrome.runtime.onStartup.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
+chrome.runtime.onInstalled.addListener(() => { void bridgeConnection.resume().catch(() => undefined); syncOptionalPlatforms() })
+chrome.permissions.onAdded.addListener(() => {
+  void chrome.action.setBadgeText({ text: "" }).catch(() => undefined)
+  // Register the scripts first so the retried tabs load an adapter.
+  void syncOptionalContentScripts()
+    .catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`))
+    .then(() => retryGrantedPlatforms())
+    .catch(() => undefined)
+  // Newly granted sites can now be probed; replace their "未授权" state.
+  void refreshAccounts().catch(() => undefined)
+})
+chrome.permissions.onRemoved.addListener(() => {
+  syncOptionalPlatforms()
+  void refreshAccounts().catch(() => undefined)
+})
 void bridgeConnection.resume().catch(() => undefined)

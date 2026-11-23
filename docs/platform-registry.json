@@ -1,0 +1,446 @@
+{
+  "note": "Generated from platforms/catalog by tests/platform-registry.test.ts. The Obsidian plugin mirrors these ids.",
+  "platforms": [
+    {
+      "id": "zhihu",
+      "group": "article",
+      "label": "知乎专栏",
+      "shortLabel": "知乎",
+      "stage": "stable"
+    },
+    {
+      "id": "csdn",
+      "group": "article",
+      "label": "CSDN 博客",
+      "shortLabel": "CSDN",
+      "stage": "stable"
+    },
+    {
+      "id": "juejin",
+      "group": "article",
+      "label": "掘金文章",
+      "shortLabel": "掘金",
+      "stage": "stable"
+    },
+    {
+      "id": "bilibili-article",
+      "group": "article",
+      "label": "B站专栏",
+      "shortLabel": "B站",
+      "stage": "stable"
+    },
+    {
+      "id": "toutiao",
+      "group": "article",
+      "label": "今日头条",
+      "shortLabel": "头条",
+      "stage": "stable"
+    },
+    {
+      "id": "weibo-article",
+      "group": "article",
+      "label": "微博头条文章",
+      "shortLabel": "微博",
+      "stage": "stable"
+    },
+    {
+      "id": "x-article",
+      "group": "article",
+      "label": "X 文章",
+      "shortLabel": "X",
+      "stage": "stable"
+    },
+    {
+      "id": "xiaohongshu",
+      "group": "post",
+      "label": "小红书图文",
+      "shortLabel": "小红书",
+      "stage": "stable"
+    },
+    {
+      "id": "weibo-post",
+      "group": "post",
+      "label": "微博图文动态",
+      "shortLabel": "微博动态",
+      "stage": "stable"
+    },
+    {
+      "id": "jike-post",
+      "group": "post",
+      "label": "即刻动态",
+      "shortLabel": "即刻",
+      "stage": "stable"
+    },
+    {
+      "id": "x-post",
+      "group": "post",
+      "label": "X 动态",
+      "shortLabel": "X",
+      "stage": "stable"
+    },
+    {
+      "id": "cnblogs-article",
+      "group": "article",
+      "label": "博客园文章",
+      "shortLabel": "博客园",
+      "stage": "beta"
+    },
+    {
+      "id": "51cto-article",
+      "group": "article",
+      "label": "51CTO 博客",
+      "shortLabel": "51CTO",
+      "stage": "beta"
+    },
+    {
+      "id": "infoq-article",
+      "group": "article",
+      "label": "InfoQ 写作",
+      "shortLabel": "InfoQ",
+      "stage": "beta"
+    },
+    {
+      "id": "segmentfault-article",
+      "group": "article",
+      "label": "思否文章",
+      "shortLabel": "思否",
+      "stage": "beta"
+    },
+    {
+      "id": "aliyun-article",
+      "group": "article",
+      "label": "阿里云开发者社区",
+      "shortLabel": "阿里云",
+      "stage": "beta"
+    },
+    {
+      "id": "tencentcloud-article",
+      "group": "article",
+      "label": "腾讯云开发者社区",
+      "shortLabel": "腾讯云",
+      "stage": "beta"
+    },
+    {
+      "id": "volcengine-article",
+      "group": "article",
+      "label": "火山引擎开发者社区",
+      "shortLabel": "火山引擎",
+      "stage": "beta"
+    },
+    {
+      "id": "oschina-article",
+      "group": "article",
+      "label": "OSChina 博客",
+      "shortLabel": "OSChina",
+      "stage": "beta"
+    },
+    {
+      "id": "jianshu-article",
+      "group": "article",
+      "label": "简书",
+      "shortLabel": "简书",
+      "stage": "beta"
+    },
+    {
+      "id": "sspai-article",
+      "group": "article",
+      "label": "少数派",
+      "shortLabel": "少数派",
+      "stage": "beta"
+    },
+    {
+      "id": "woshipm-article",
+      "group": "article",
+      "label": "人人都是产品经理",
+      "shortLabel": "人人都是PM",
+      "stage": "beta"
+    },
+    {
+      "id": "weixin-article",
+      "group": "article",
+      "label": "微信公众号文章",
+      "shortLabel": "公众号",
+      "stage": "beta"
+    },
+    {
+      "id": "qq-article",
+      "group": "article",
+      "label": "企鹅号文章",
+      "shortLabel": "企鹅号",
+      "stage": "beta"
+    },
+    {
+      "id": "baijiahao-article",
+      "group": "article",
+      "label": "百家号文章",
+      "shortLabel": "百家号",
+      "stage": "beta"
+    },
+    {
+      "id": "netease-article",
+      "group": "article",
+      "label": "网易号文章",
+      "shortLabel": "网易号",
+      "stage": "beta"
+    },
+    {
+      "id": "sohu-article",
+      "group": "article",
+      "label": "搜狐号文章",
+      "shortLabel": "搜狐号",
+      "stage": "beta"
+    },
+    {
+      "id": "douyin-article",
+      "group": "article",
+      "label": "抖音文章",
+      "shortLabel": "抖音",
+      "stage": "beta"
+    },
+    {
+      "id": "zsxq-article",
+      "group": "article",
+      "label": "知识星球文章",
+      "shortLabel": "知识星球",
+      "stage": "beta"
+    },
+    {
+      "id": "smzdm-article",
+      "group": "article",
+      "label": "什么值得买文章",
+      "shortLabel": "值得买",
+      "stage": "beta"
+    },
+    {
+      "id": "xueqiu-article",
+      "group": "article",
+      "label": "雪球文章",
+      "shortLabel": "雪球",
+      "stage": "beta"
+    },
+    {
+      "id": "eastmoney-article",
+      "group": "article",
+      "label": "东方财富财富号文章",
+      "shortLabel": "财富号",
+      "stage": "beta"
+    },
+    {
+      "id": "tonghuashun-article",
+      "group": "article",
+      "label": "同花顺号文章",
+      "shortLabel": "同花顺",
+      "stage": "beta"
+    },
+    {
+      "id": "yidian-article",
+      "group": "article",
+      "label": "一点资讯文章",
+      "shortLabel": "一点号",
+      "stage": "beta"
+    },
+    {
+      "id": "dayu-article",
+      "group": "article",
+      "label": "大鱼号文章",
+      "shortLabel": "大鱼号",
+      "stage": "beta"
+    },
+    {
+      "id": "topnews-article",
+      "group": "article",
+      "label": "顶端号文章",
+      "shortLabel": "顶端号",
+      "stage": "beta"
+    },
+    {
+      "id": "kuaichuan-article",
+      "group": "article",
+      "label": "360 快传号文章",
+      "shortLabel": "快传号",
+      "stage": "beta"
+    },
+    {
+      "id": "autohome-article",
+      "group": "article",
+      "label": "汽车之家车家号文章",
+      "shortLabel": "车家号",
+      "stage": "beta"
+    },
+    {
+      "id": "dongchedi-article",
+      "group": "article",
+      "label": "懂车帝懂车号文章",
+      "shortLabel": "懂车号",
+      "stage": "beta"
+    },
+    {
+      "id": "toutiao-post",
+      "group": "post",
+      "label": "微头条",
+      "shortLabel": "微头条",
+      "stage": "beta"
+    },
+    {
+      "id": "zhihu-post",
+      "group": "post",
+      "label": "知乎想法",
+      "shortLabel": "知乎想法",
+      "stage": "beta"
+    },
+    {
+      "id": "bilibili-post",
+      "group": "post",
+      "label": "B站动态",
+      "shortLabel": "B站动态",
+      "stage": "beta"
+    },
+    {
+      "id": "juejin-post",
+      "group": "post",
+      "label": "掘金沸点",
+      "shortLabel": "沸点",
+      "stage": "beta"
+    },
+    {
+      "id": "douyin-post",
+      "group": "post",
+      "label": "抖音图文",
+      "shortLabel": "抖音图文",
+      "stage": "beta"
+    },
+    {
+      "id": "kuaishou-post",
+      "group": "post",
+      "label": "快手图文",
+      "shortLabel": "快手图文",
+      "stage": "beta"
+    },
+    {
+      "id": "xueqiu-post",
+      "group": "post",
+      "label": "雪球动态",
+      "shortLabel": "雪球",
+      "stage": "beta"
+    },
+    {
+      "id": "douban-post",
+      "group": "post",
+      "label": "豆瓣广播",
+      "shortLabel": "豆瓣",
+      "stage": "beta"
+    },
+    {
+      "id": "zsxq-post",
+      "group": "post",
+      "label": "知识星球主题",
+      "shortLabel": "知识星球",
+      "stage": "beta"
+    },
+    {
+      "id": "shipinhao-post",
+      "group": "post",
+      "label": "视频号图文",
+      "shortLabel": "视频号图文",
+      "stage": "beta"
+    },
+    {
+      "id": "xiaoheihe-post",
+      "group": "post",
+      "label": "小黑盒图文",
+      "shortLabel": "小黑盒",
+      "stage": "beta"
+    },
+    {
+      "id": "maimai-post",
+      "group": "post",
+      "label": "脉脉动态",
+      "shortLabel": "脉脉",
+      "stage": "beta"
+    },
+    {
+      "id": "dedao-post",
+      "group": "post",
+      "label": "得到知识城邦",
+      "shortLabel": "得到",
+      "stage": "beta"
+    },
+    {
+      "id": "baijiahao-post",
+      "group": "post",
+      "label": "百家号动态",
+      "shortLabel": "百家号动态",
+      "stage": "beta"
+    },
+    {
+      "id": "bsky-post",
+      "group": "post",
+      "label": "Bluesky 动态",
+      "shortLabel": "Bluesky",
+      "stage": "beta"
+    },
+    {
+      "id": "linkedin-post",
+      "group": "post",
+      "label": "LinkedIn 动态",
+      "shortLabel": "LinkedIn",
+      "stage": "beta"
+    },
+    {
+      "id": "threads-post",
+      "group": "post",
+      "label": "Threads 动态",
+      "shortLabel": "Threads",
+      "stage": "beta"
+    },
+    {
+      "id": "reddit-post",
+      "group": "post",
+      "label": "Reddit 帖子",
+      "shortLabel": "Reddit",
+      "stage": "beta"
+    },
+    {
+      "id": "facebook-post",
+      "group": "post",
+      "label": "Facebook 动态",
+      "shortLabel": "Facebook",
+      "stage": "beta"
+    },
+    {
+      "id": "substack-post",
+      "group": "post",
+      "label": "Substack Notes",
+      "shortLabel": "Substack",
+      "stage": "beta"
+    },
+    {
+      "id": "pinterest-post",
+      "group": "post",
+      "label": "Pinterest Pin",
+      "shortLabel": "Pinterest",
+      "stage": "beta"
+    },
+    {
+      "id": "instagram-post",
+      "group": "post",
+      "label": "Instagram 图文",
+      "shortLabel": "Instagram",
+      "stage": "beta"
+    },
+    {
+      "id": "medium-article",
+      "group": "article",
+      "label": "Medium 文章",
+      "shortLabel": "Medium",
+      "stage": "beta"
+    },
+    {
+      "id": "substack-article",
+      "group": "article",
+      "label": "Substack 文章",
+      "shortLabel": "Substack",
+      "stage": "beta"
+    }
+  ]
+}

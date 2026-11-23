@@ -28,6 +28,11 @@ export type ExtensionRequest =
   | { type: "GET_ASSET_CHUNK"; taskId: string; assetId: string; offset: number }
   | { type: "FILL_PLATFORM_EDITOR"; platformId: PlatformId; title: string; html: string; markdown: string }
   | { type: "UPLOAD_PLATFORM_ASSET"; taskId: string; platformId: PlatformId; asset: PublishAssetV1 }
+  | { type: "DIAGNOSTIC_EVENTS"; events: unknown[] }
+  | { type: "GET_DIAGNOSTICS" }
+  | { type: "RUN_SELF_CHECK" }
+  | { type: "CLEAR_DIAGNOSTICS" }
+  | { type: "OPEN_DIAGNOSTICS" }
 
 export type ContentRequest =
   | { type: "PREPARE_DRAFT"; task: PublishTaskV1; platformId?: PlatformId }

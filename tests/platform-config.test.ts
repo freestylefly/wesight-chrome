@@ -17,6 +17,7 @@ describe("platform configuration", () => {
     ["https://x.com/i/flow/login", "x-post"],
     ["https://twitter.com/compose/post", "x-post"],
     ["https://x.com/compose/articles-fake", "x-post"],
+    ["https://x.com/compose/articles?draft=1", "x-article"],
     ["https://picupload.weibo.com/interface/pic_upload.php", null]
   ] as const)("maps %s to %s", (url, platformId) => {
     expect(platformFromUrl(url)).toBe(platformId)

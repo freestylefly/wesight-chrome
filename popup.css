@@ -49,6 +49,8 @@ h1, h2, p { margin: 0; }
 .error-note { padding: 9px 11px; border-radius: 8px; background: #fff0ed; color: #b42318; font-size: 11px; }
 footer { display: grid; gap: 4px; margin-top: auto; color: #a49389; font-size: 10px; text-align: center; }
 footer a { color: #876f62; }
+.diagnostics-link { justify-self: center; display: inline-flex; align-items: center; gap: 3px; border: 0; padding: 0; background: transparent; color: #876f62; font-size: 10px; text-decoration: underline; }
+.diagnostics-link svg { width: 11px; height: 11px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .center-action { margin: 0 0 12px; }
 

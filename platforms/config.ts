@@ -1,109 +1,56 @@
+import { PLATFORM_CATALOG, platformDefinition } from "~platforms/catalog"
 import type { PlatformId } from "~types/protocol"
 
-export const PLATFORM_CONFIG: Record<PlatformId, {
+export interface PlatformConfigEntry {
   label: string
   shortLabel: string
   editorUrl: string
   titleLimit: number
-}> = {
-  zhihu: {
-    label: "知乎专栏",
-    shortLabel: "知乎",
-    editorUrl: "https://zhuanlan.zhihu.com/write",
-    titleLimit: 100
-  },
-  csdn: {
-    label: "CSDN 博客",
-    shortLabel: "CSDN",
-    editorUrl: "https://mp.csdn.net/mp_blog/creation/editor",
-    titleLimit: 100
-  },
-  juejin: {
-    label: "掘金文章",
-    shortLabel: "掘金",
-    editorUrl: "https://juejin.cn/editor/drafts/new?v=2",
-    titleLimit: 80
-  },
-  "bilibili-article": {
-    label: "B站专栏",
-    shortLabel: "B站",
-    editorUrl: "https://member.bilibili.com/york/read-editor",
-    titleLimit: 40
-  },
-  toutiao: {
-    label: "今日头条",
-    shortLabel: "头条",
-    editorUrl: "https://mp.toutiao.com/profile_v4/graphic/publish",
-    titleLimit: 30
-  },
-  "weibo-article": {
-    label: "微博头条文章",
-    shortLabel: "微博",
-    editorUrl: "https://card.weibo.com/article/v5/editor",
-    titleLimit: 32
-  },
-  "x-article": {
-    label: "X 文章",
-    shortLabel: "X",
-    editorUrl: "https://x.com/compose/articles",
-    titleLimit: 100
-  },
-  xiaohongshu: {
-    label: "小红书图文",
-    shortLabel: "小红书",
-    editorUrl: "https://creator.xiaohongshu.com/publish/publish?target=image",
-    titleLimit: 20
-  },
-  "weibo-post": {
-    label: "微博图文动态",
-    shortLabel: "微博动态",
-    editorUrl: "https://weibo.com/",
-    titleLimit: 2000
-  },
-  "jike-post": {
-    label: "即刻动态",
-    shortLabel: "即刻",
-    editorUrl: "https://web.okjike.com/",
-    titleLimit: 2000
-  },
-  "x-post": {
-    label: "X 动态",
-    shortLabel: "X",
-    editorUrl: "https://x.com/compose/post",
-    titleLimit: 280
-  }
 }
+
+export const PLATFORM_CONFIG = Object.fromEntries(PLATFORM_CATALOG.map(entry => [entry.id, {
+  label: entry.label,
+  shortLabel: entry.shortLabel,
+  editorUrl: entry.editorUrl,
+  titleLimit: entry.titleLimit
+}])) as Record<PlatformId, PlatformConfigEntry>
 
 export function isXPlatform(platformId: PlatformId | null | undefined): platformId is "x-article" | "x-post" {
   return platformId === "x-article" || platformId === "x-post"
 }
 
-/** Article and dynamic publishing use the same signed-in platform account. */
+/** Platforms sharing one signed-in account on the same site, in catalog order. */
 export function accountPlatformIds(platformId: PlatformId): readonly PlatformId[] {
-  if (isXPlatform(platformId)) return ["x-article", "x-post"]
-  if (platformId === "weibo-article" || platformId === "weibo-post") return ["weibo-article", "weibo-post"]
-  return [platformId]
+  const key = platformDefinition(platformId).accountKey
+  return PLATFORM_CATALOG.filter(entry => entry.accountKey === key).map(entry => entry.id)
 }
 
-/** Keep a task bound to its own X adapter while the single-page app changes routes. */
+/** Whether two platforms live on the same site and share a signed-in account. */
+export function sameAccountPlatform(a: PlatformId | null | undefined, b: PlatformId | null | undefined): boolean {
+  if (!a || !b) return false
+  return a === b || platformDefinition(a).accountKey === platformDefinition(b).accountKey
+}
+
+/**
+ * Keep a task bound to its own adapter while a single-page app changes routes,
+ * or when one site hosts several destinations (article, post, video).
+ */
 export function platformForOwnedPage(reported: PlatformId, owner: PlatformId | undefined, url: string): PlatformId {
-  if (!isXPlatform(reported) || !isXPlatform(owner)) return reported
-  try { return isXPlatform(platformFromUrl(url)) ? owner : reported } catch { return reported }
+  if (!owner || !sameAccountPlatform(reported, owner)) return reported
+  try { return sameAccountPlatform(platformFromUrl(url), owner) ? owner : reported } catch { return reported }
 }
 
 export function platformFromUrl(url: string): PlatformId | null {
   const parsed = new URL(url)
-  const host = parsed.hostname
-  if (host === "www.zhihu.com" || host === "zhuanlan.zhihu.com") return "zhihu"
-  if (host === "www.csdn.net" || host === "editor.csdn.net" || host === "mp.csdn.net" || host === "passport.csdn.net") return "csdn"
-  if (host === "juejin.cn" || host === "passport.juejin.cn") return "juejin"
-  if (host === "member.bilibili.com" || host === "passport.bilibili.com") return "bilibili-article"
-  if (host === "mp.toutiao.com" || host === "sso.toutiao.com") return "toutiao"
-  if (host === "card.weibo.com") return "weibo-article"
-  if (host === "weibo.com" || host === "www.weibo.com") return "weibo-post"
-  if (host === "passport.weibo.com" || host === "login.sina.com.cn") return "weibo-post"
-  if (host === "creator.xiaohongshu.com") return "xiaohongshu"
-  if (host === "x.com" || host === "twitter.com") return /^\/compose\/articles(?:\/|$)/.test(parsed.pathname) ? "x-article" : "x-post"
-  if (host === "web.okjike.com") return "jike-post"
-  return null
+  if (parsed.protocol !== "https:") return null
+  const candidates = PLATFORM_CATALOG.filter(entry => (entry.hosts as readonly string[]).includes(parsed.hostname))
+  if (!candidates.length) return null
+  const byPath = candidates.find(entry => "paths" in entry
+    && (entry.paths as readonly string[]).some(pattern => {
+      const expression = new RegExp(pattern)
+      // Path-only patterns such as "^/pins(?:/|$)" must keep matching when a query follows.
+      return expression.test(parsed.pathname) || expression.test(`${parsed.pathname}${parsed.search}`)
+    }))
+  if (byPath) return byPath.id
+  return (candidates.find(entry => !("paths" in entry)) ?? candidates[0]!).id
 }

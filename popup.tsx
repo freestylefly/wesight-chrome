@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ExternalLink, LayoutDashboard, LogIn, LoaderCircle, UserRound, RefreshCw, Unplug } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, LayoutDashboard, LogIn, LoaderCircle, UserRound, RefreshCw, Stethoscope, Unplug } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import logo from "data-base64:~assets/icon.png"
@@ -6,6 +6,7 @@ import logo from "data-base64:~assets/icon.png"
 import "./popup.css"
 
 import type { ExtensionRequest, ExtensionResponse, PopupState } from "~types/messages"
+import { isPermissionFailure, requestPlatformPermissions } from "~lib/optional-platforms"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import { PLATFORM_IDS, type PlatformId, type PlatformTaskState } from "~types/protocol"
 
@@ -62,6 +63,12 @@ function App() {
   const retry = async (platformId: PlatformId) => {
     const task = state?.currentTask
     if (!task) return
+    // Ask for site access from this click; if the prompt closes the popup, the
+    // background retries the platform as soon as access is granted.
+    if (!(await requestPlatformPermissions([platformId]).catch(() => false))) {
+      setError(`需要允许访问${PLATFORM_CONFIG[platformId].shortLabel}后才能重试`)
+      return
+    }
     setBusy(platformId)
     try {
       await request({ type: "RETRY_PLATFORM", taskId: task.taskId, platformId })
@@ -116,7 +123,7 @@ function App() {
         <div className="account-grid">
           {PLATFORM_IDS.map(id => <div className="account-item" key={id}>
             <span>{PLATFORM_CONFIG[id].shortLabel}</span>
-            <small className={state.accounts[id].state}>{state.accounts[id].state === "logged_in" ? "已登录" : state.accounts[id].state === "login_required" ? "需登录" : "未检测"}</small>
+            <small className={state.accounts[id].state}>{state.accounts[id].state === "logged_in" ? "已登录" : state.accounts[id].state === "login_required" ? "需登录" : state.accounts[id].state === "permission_missing" ? "未授权" : "未检测"}</small>
           </div>)}
         </div>
       </section>
@@ -131,7 +138,7 @@ function App() {
             return <div className="platform-row" key={id}>
               <StatusIcon status={item.status} />
               <div><strong>{PLATFORM_CONFIG[id].label}</strong><span>{item.message || STATUS_LABEL[item.status]}</span></div>
-              {retryable && <button disabled={busy === id} onClick={() => void retry(id)}>{busy === id ? "重试中" : "重试"}</button>}
+              {retryable && <button disabled={busy === id} onClick={() => void retry(id)}>{busy === id ? "重试中" : isPermissionFailure(item.message) ? "授权并重试" : "重试"}</button>}
             </div>
           })}
         </div>
@@ -141,6 +148,9 @@ function App() {
     {error && <div className="error-note">{error}</div>}
     <footer>
       <span>Obsidian 内容通过本机通道导入，素材同步到你选择的平台</span>
+      <button className="diagnostics-link" onClick={() => {
+        void request({ type: "OPEN_DIAGNOSTICS" }).then(() => window.close()).catch(reason => setError(String(reason)))
+      }}><Stethoscope />诊断</button>
       <a href="https://github.com/freestylefly/wesight-chrome/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">隐私政策</a>
     </footer>
   </main>
