@@ -188,7 +188,22 @@ export function parseWeiboAccount(html: string): AccountRecord {
 
 // Endpoints mirror the "current user" calls each creator site makes itself.
 // Any unexpected shape falls back to "unknown" so a site change never blocks publishing.
-const PROBES: Partial<Record<ArticlePlatformId, Probe>> = {
+/**
+ * 51CTO has no JSON "current user" endpoint; the blog home page server-renders
+ * the header account link and a `var isLogin = 0|1` flag.
+ */
+export function parse51ctoAccount(html: string): AccountRecord {
+  const link = /class="user-base"[^>]*>([\s\S]{0,400}?)<\/a>/.exec(html)?.[1]
+  const name = link ? text(/<span[^>]*>([^<]+)<\/span>/.exec(link)?.[1]) : undefined
+  if (name) return loggedIn(name, text(/<img[^>]*\ssrc="([^"]+)"/.exec(link ?? "")?.[1]))
+  return /\bvar\s+isLogin\s*=\s*0\s*;/.test(html) ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+const PROBES: Partial<Record<PlatformId, Probe>> = {
+  async "51cto-article"() {
+    const { body } = await getJson("https://blog.51cto.com/")
+    return typeof body === "string" ? parse51ctoAccount(body) : { state: "unknown" }
+  },
   async "x-article"() {
     return { state: "unknown" }
   },
@@ -262,7 +277,7 @@ async function probe(platformId: PlatformId): Promise<AccountRecord> {
       .catch(() => ({ state: "unknown" } as AccountRecord))
     if (page.state !== "unknown") return { ...page, checkedAt: new Date().toISOString() }
     const declared = findPlatformDefinition(platformId)?.account
-    const fallback = PROBES[platformId as ArticlePlatformId] ?? (declared ? () => catalogProbe(declared) : undefined)
+    const fallback = PROBES[platformId] ?? (declared ? () => catalogProbe(declared) : undefined)
     return { ...(fallback ? await fallback() : { state: "unknown" as const }), checkedAt: new Date().toISOString() }
   } catch {
     return { state: "unknown", checkedAt: new Date().toISOString() }

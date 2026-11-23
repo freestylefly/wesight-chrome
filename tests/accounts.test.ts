@@ -1,4 +1,4 @@
-import { parseWeiboAccount, probeAccount } from "~lib/accounts"
+import { parse51ctoAccount, parseWeiboAccount, probeAccount } from "~lib/accounts"
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
 const query = vi.fn()
@@ -21,6 +21,13 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("browser account probes", () => {
+  test("reads the 51CTO account from the server-rendered blog header", async () => {
+    const html = `<script>var user_id = 1; var isLogin = 1;</script><div class="ins"> <a class="user-base" href="https://blog.51cto.com/u_1" target="_blank"> <img data-uid="1" src="https://ucenter.51cto.com/images/noavatar_middle.gif" /><span>mb6b03a4b480522</span> </a>`
+    vi.mocked(fetch).mockResolvedValue(new Response(html))
+    expect(await probeAccount("51cto-article")).toMatchObject({ state: "logged_in", name: "mb6b03a4b480522", avatar: "https://ucenter.51cto.com/images/noavatar_middle.gif" })
+    expect(parse51ctoAccount("<script>var isLogin = 0;</script>")).toEqual({ state: "login_required" })
+    expect(parse51ctoAccount("<html></html>")).toEqual({ state: "unknown" })
+  })
   test("reports missing site access for an optional platform without probing it", async () => {
     permissionContains.mockResolvedValue(false)
     expect(await probeAccount("douyin-post")).toMatchObject({ state: "permission_missing" })
