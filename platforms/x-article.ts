@@ -5,7 +5,7 @@ import { discoverXApi, XApiError, XArticleApi, type XUploadedMedia } from "~lib/
 import { xArticleContent } from "~lib/x-article-content"
 import { supportedXImages, XUnsupportedImageError } from "~lib/x-image-policy"
 import { PLATFORM_CONFIG } from "~platforms/config"
-import { loginPageDetected } from "~platforms/dom"
+import { loginPageDetected, xAccountHandle } from "~platforms/dom"
 import type { PlatformAdapter, PrepareDraftContext, PrepareDraftResult } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
 
@@ -23,17 +23,11 @@ interface Checkpoint {
 }
 const runs = new Map<string, Promise<PrepareDraftResult>>()
 
-function accountName(): string | undefined {
-  const account = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]')
-  return Array.from(account?.querySelectorAll("span") ?? [])
-    .map(span => span.textContent?.trim()).find(text => /^@[\w]+$/.test(text ?? ""))?.slice(1)
-}
-
 async function detectAccount() {
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
     if (loginPageDetected() || document.querySelector('[data-testid="loginButton"]')) return { loggedIn: false, message: "请先登录 X" }
-    const name = accountName()
+    const name = xAccountHandle()
     if (name) return { loggedIn: true, name }
     await new Promise(resolve => setTimeout(resolve, 200))
   }

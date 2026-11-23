@@ -1,7 +1,7 @@
 {
   "name": "wesight-publish-assistant",
   "displayName": "WeSight 发布助手",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Prepare article and social-post drafts from Obsidian, Markdown files, links, or the browser publish center for manual publishing.",
   "author": "WeSight",
   "license": "AGPL-3.0-or-later",

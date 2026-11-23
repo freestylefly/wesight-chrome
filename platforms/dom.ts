@@ -160,3 +160,16 @@ export function loginPageDetected(): boolean {
     return true
   })
 }
+
+/** Handle of the signed-in X account. Works when the sidebar is collapsed and shows only the avatar. */
+export function xAccountHandle(root: ParentNode = document): string | undefined {
+  const switcher = root.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]')
+  const fromText = Array.from(switcher?.querySelectorAll("span") ?? [])
+    .map(span => span.textContent?.trim()).find(text => /^@[\w]+$/.test(text ?? ""))?.slice(1)
+  if (fromText) return fromText
+  const avatar = switcher?.querySelector('[data-testid^="UserAvatar-Container-"]')?.getAttribute("data-testid")
+  const fromAvatar = /^UserAvatar-Container-(\w+)$/.exec(avatar ?? "")?.[1]
+  if (fromAvatar) return fromAvatar
+  const profile = root.querySelector('a[data-testid="AppTabBar_Profile_Link"]')?.getAttribute("href")
+  return /^\/(\w+)\/?$/.exec(profile ?? "")?.[1]
+}
