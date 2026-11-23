@@ -1093,6 +1093,11 @@ chrome.permissions.onAdded.addListener(() => {
     .catch(error => writeLog("warn", "background", `可选平台脚本注册失败：${error instanceof Error ? error.message : String(error)}`))
     .then(() => retryGrantedPlatforms())
     .catch(() => undefined)
+  // Newly granted sites can now be probed; replace their "未授权" state.
+  void refreshAccounts().catch(() => undefined)
 })
-chrome.permissions.onRemoved.addListener(syncOptionalPlatforms)
+chrome.permissions.onRemoved.addListener(() => {
+  syncOptionalPlatforms()
+  void refreshAccounts().catch(() => undefined)
+})
 void bridgeConnection.resume().catch(() => undefined)

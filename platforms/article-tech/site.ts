@@ -31,8 +31,12 @@ export interface TechArticleSite {
   loginHosts?: readonly string[]
   /** When set, a page whose path does not match is treated as a logged-out redirect. */
   editorPathPattern?: RegExp
+  /** Pages that mean the account cannot write yet (e.g. a creator application form), with the message to show. */
+  blockedPages?: readonly { pattern: RegExp; message: string }[]
   /** Text of a same-page control that opens a fresh draft (never a publish button). */
   newDraftTexts?: readonly string[]
+  /** Non-button elements (e.g. a styled DIV) that may carry one of newDraftTexts. */
+  newDraftSelectors?: readonly string[]
   /** For sites whose editor URL needs the user id: the editor URL derived from the current page. */
   editorRoute?: () => string | null
   /** Shown after filling, e.g. which publish settings still need the user. */
@@ -76,7 +80,13 @@ function replaceImages(markdown: string, html: string, assets: readonly PublishA
   return { markdown: nextMarkdown, html: parsed.body.innerHTML }
 }
 
+function assertNotBlocked(site: TechArticleSite): void {
+  const blocked = site.blockedPages?.find(page => page.pattern.test(location.pathname))
+  if (blocked) throw new Error(blocked.message)
+}
+
 async function openEditorPage(site: TechArticleSite, label: string): Promise<void> {
+  assertNotBlocked(site)
   if (findEditor(site.editors)) return
   if (site.editorRoute) {
     const target = site.editorRoute()
@@ -89,7 +99,7 @@ async function openEditorPage(site: TechArticleSite, label: string): Promise<voi
   }
   if (!site.newDraftTexts?.length) return
   if (await waitForAny(site.titleSelectors as string[], QUICK_WAIT_MS)) return
-  const control = findActionByText(site.newDraftTexts)
+  const control = findActionByText(site.newDraftTexts, site.newDraftSelectors)
   if (!control) throw new PlatformPageChangedError(label, "“写文章”入口")
   if (control instanceof HTMLAnchorElement && control.target === "_blank" && control.href) {
     window.setTimeout(() => location.assign(control.href), 0)
@@ -104,6 +114,8 @@ export function createTechArticleAdapter(site: TechArticleSite): PlatformAdapter
   async function prepare(context: PrepareDraftContext): Promise<PrepareDraftResult> {
     await openEditorPage(site, config.label)
     const title = await waitForAny<HTMLElement>(site.titleSelectors as string[], TITLE_WAIT_MS)
+    // The entry control may have navigated to a page this account cannot write on.
+    assertNotBlocked(site)
     if (!title) throw new PlatformPageChangedError(config.label, "标题输入框")
     const editor = await waitForEditor(site.editors)
     if (!editor) throw new PlatformPageChangedError(config.label, "正文编辑器")

@@ -30,6 +30,7 @@ export const POST_CN_PLATFORMS = [
     id: "douyin-post", group: "post", label: "抖音图文", shortLabel: "抖音图文", editorUrl: "https://creator.douyin.com/creator-micro/content/post/image?media_type=image&type=new",
     titleLimit: 20, accountKey: "douyin", hosts: ["creator.douyin.com"], paths: ["^/creator-micro/content/post/image(?:[/?]|$)"],
     permission: "optional", stage: "beta", media: { images: 9, video: false, requiresMedia: true }, textLimit: 1000,
+    account: { url: "https://creator.douyin.com/web/api/media/user/info/", name: "user.nickname", avatar: "user.avatar_thumb.url_list.0" },
     brand: { glyph: "抖", color: "#161823", caption: "至少需要一张图片，标签会写成 #话题" }
   },
   {

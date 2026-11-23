@@ -15,6 +15,7 @@ export const ARTICLE_TECH_PLATFORMS = [
   {
     id: "infoq-article", group: "article", label: "InfoQ 写作", shortLabel: "InfoQ", editorUrl: "https://xie.infoq.cn/draftbox",
     titleLimit: 60, accountKey: "infoq", hosts: ["xie.infoq.cn", "account.infoq.cn", "account.geekbang.org"], permission: "optional", stage: "beta",
+    account: { url: "https://account.infoq.cn/serv/v1/user/auth", name: "data.nick", avatar: "data.avatar" },
     brand: { glyph: "Q", color: "#0a6c38" }
   },
   {

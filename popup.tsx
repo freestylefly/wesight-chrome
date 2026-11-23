@@ -123,7 +123,7 @@ function App() {
         <div className="account-grid">
           {PLATFORM_IDS.map(id => <div className="account-item" key={id}>
             <span>{PLATFORM_CONFIG[id].shortLabel}</span>
-            <small className={state.accounts[id].state}>{state.accounts[id].state === "logged_in" ? "已登录" : state.accounts[id].state === "login_required" ? "需登录" : "未检测"}</small>
+            <small className={state.accounts[id].state}>{state.accounts[id].state === "logged_in" ? "已登录" : state.accounts[id].state === "login_required" ? "需登录" : state.accounts[id].state === "permission_missing" ? "未授权" : "未检测"}</small>
           </div>)}
         </div>
       </section>

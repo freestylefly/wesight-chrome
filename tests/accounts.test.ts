@@ -6,6 +6,7 @@ const executeScript = vi.fn()
 const createTab = vi.fn()
 const getTab = vi.fn()
 const removeTab = vi.fn()
+const permissionContains = vi.fn()
 
 beforeEach(() => {
   query.mockReset().mockResolvedValue([])
@@ -13,12 +14,27 @@ beforeEach(() => {
   createTab.mockReset().mockResolvedValue({ id: 100, url: "https://web.okjike.com/", status: "loading", active: false })
   getTab.mockReset().mockImplementation(async (id: number) => ({ id, url: "https://web.okjike.com/", status: "complete", active: false }))
   removeTab.mockReset().mockResolvedValue(undefined)
-  vi.stubGlobal("chrome", { tabs: { query, create: createTab, get: getTab, remove: removeTab }, scripting: { executeScript } })
+  permissionContains.mockReset().mockResolvedValue(true)
+  vi.stubGlobal("chrome", { tabs: { query, create: createTab, get: getTab, remove: removeTab }, scripting: { executeScript }, permissions: { contains: permissionContains } })
   vi.stubGlobal("fetch", vi.fn(async () => json({})))
 })
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("browser account probes", () => {
+  test("reports missing site access for an optional platform without probing it", async () => {
+    permissionContains.mockResolvedValue(false)
+    expect(await probeAccount("douyin-post")).toMatchObject({ state: "permission_missing" })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  test("reads the Douyin creator account through the catalog probe", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ status_code: 0, user: { nickname: "抖音作者", avatar_thumb: { url_list: ["https://example.com/a.jpg"] } } }))
+    expect(await probeAccount("douyin-article")).toMatchObject({ state: "logged_in", name: "抖音作者", avatar: "https://example.com/a.jpg" })
+    expect(fetch).toHaveBeenCalledWith("https://creator.douyin.com/web/api/media/user/info/", expect.anything())
+  })
+  test("reads the InfoQ account through the catalog probe", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ code: 0, data: { nick: "InfoQ 作者", avatar: "https://example.com/q.png" } }))
+    expect(await probeAccount("infoq-article")).toMatchObject({ state: "logged_in", name: "InfoQ 作者" })
+  })
   test("reads an already open CSDN page without requiring an extension receiver or another tab", async () => {
     query.mockResolvedValue([{ id: 1 }])
     executeScript.mockResolvedValue([{ result: { state: "logged_in", name: "创作者" } }])

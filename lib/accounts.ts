@@ -2,6 +2,7 @@ import type { AccountRecord } from "~lib/storage"
 import type { ArticlePlatformId, PlatformId } from "~types/protocol"
 import { readAccountPage } from "~lib/account-page"
 import { findPlatformDefinition, type PlatformDefinition } from "~platforms/catalog"
+import { platformsMissingPermission } from "~lib/optional-platforms"
 
 type Probe = () => Promise<AccountRecord>
 
@@ -255,6 +256,8 @@ const pending = new Map<PlatformId, Promise<AccountRecord>>()
 
 async function probe(platformId: PlatformId): Promise<AccountRecord> {
   try {
+    // Without site access the extension can neither read the site's cookies nor its open tabs.
+    if ((await platformsMissingPermission([platformId])).length) return { state: "permission_missing", checkedAt: new Date().toISOString() }
     const page = await (platformId === "jike-post" || platformId === "xiaohongshu" || platformId === "x-article" ? probeSessionPages(platformId) : probeOpenPages(platformId))
       .catch(() => ({ state: "unknown" } as AccountRecord))
     if (page.state !== "unknown") return { ...page, checkedAt: new Date().toISOString() }

@@ -46,6 +46,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
     editorUrl: "https://creator.douyin.com/creator-micro/content/post/article?enter_from=publish_page&media_type=article&type=new",
     titleLimit: 30, accountKey: "douyin", hosts: ["creator.douyin.com"], paths: ["^/creator-micro/content/post/article(?:/|$)"],
     permission: "optional", stage: "beta",
+    account: { url: "https://creator.douyin.com/web/api/media/user/info/", name: "user.nickname", avatar: "user.avatar_thumb.url_list.0" },
     brand: { glyph: "抖", color: "#161823" }
   },
   {

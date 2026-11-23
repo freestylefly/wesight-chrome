@@ -883,7 +883,7 @@ function App() {
                 <PlatformLogo platformId={platformId} />
                 <span className="platform-copy">
                   <strong>{PLATFORM_CONFIG[platformId].label}</strong>
-                  <small>{account.state === "logged_in" ? (account.name ? `@${account.name}` : "已登录账号") : account.state === "login_required" ? "未登录" : checkingAccounts ? "正在检测账号…" : "暂时无法确认登录状态"}</small>
+                  <small>{account.state === "logged_in" ? (account.name ? `@${account.name}` : "已登录账号") : account.state === "login_required" ? "未登录" : account.state === "permission_missing" ? "尚未授权访问该网站" : checkingAccounts ? "正在检测账号…" : "暂时无法确认登录状态"}</small>
                 </span>
               </label>
               <div className="platform-side">
@@ -905,7 +905,7 @@ function App() {
                     : null}
                 </> : account.state === "logged_in"
                   ? <span className="account-dot is-online"><i />已登录</span>
-                  : <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : "去登录"}</button>}
+                  : <button className="link" disabled={openingPlatformLogins.includes(platformId)} onClick={() => void openLogin(platformId)}>{openingPlatformLogins.includes(platformId) ? "正在打开…" : account.state === "permission_missing" ? "授权并登录" : "去登录"}</button>}
               </div>
               {state?.message && ["failed", "login_required", "filling"].includes(state.status)
                 ? <p className={`platform-message is-${state.status}`} role={state.status === "failed" ? "alert" : "status"}>{state.message}</p>

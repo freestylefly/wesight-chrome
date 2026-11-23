@@ -165,8 +165,8 @@ export function fillTitleControl(element: HTMLElement, title: string): void {
 }
 
 /** Finds a "new draft" button or link by its text, never a final publish action. */
-export function findActionByText(texts: readonly string[]): HTMLElement | null {
-  const controls = document.querySelectorAll<HTMLElement>("button, a, [role='button']")
+export function findActionByText(texts: readonly string[], extraSelectors: readonly string[] = []): HTMLElement | null {
+  const controls = document.querySelectorAll<HTMLElement>(["button", "a", "[role='button']", ...extraSelectors].join(", "))
   for (const control of Array.from(controls)) {
     const label = (control.textContent ?? "").replace(/\s+/g, "")
     if (!label || FINAL_ACTION_PATTERN.test(label) || hiddenByAttribute(control)) continue
