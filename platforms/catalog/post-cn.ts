@@ -60,6 +60,7 @@ export const POST_CN_PLATFORMS = [
   },
   {
     id: "shipinhao-post", group: "post", label: "视频号图文", shortLabel: "视频号图文", editorUrl: "https://channels.weixin.qq.com/platform/post/finderNewLifeCreate",
+    loginCheckUrl: "https://channels.weixin.qq.com/platform",
     titleLimit: 20, accountKey: "shipinhao", hosts: ["channels.weixin.qq.com"], paths: ["^/platform/post/finderNewLifeCreate(?:[/?]|$)"],
     permission: "optional", stage: "beta", media: { images: 9, video: false, requiresMedia: true }, textLimit: 1000,
     brand: { glyph: "视", color: "#fa9d3b", caption: "至少需要一张图片，标签会写成 #话题" }
@@ -72,6 +73,7 @@ export const POST_CN_PLATFORMS = [
   },
   {
     id: "maimai-post", group: "post", label: "脉脉动态", shortLabel: "脉脉", editorUrl: "https://maimai.cn/community/home/following",
+    loginCheckUrl: "https://maimai.cn/community/home/following",
     titleLimit: 2000, accountKey: "maimai", hosts: ["maimai.cn"],
     permission: "optional", stage: "beta", media: { images: 9, video: false },
     brand: { glyph: "脉", color: "#2c7cf6", caption: "话题需在脉脉页面手动添加" }

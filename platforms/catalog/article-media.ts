@@ -17,6 +17,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "qq-article", group: "article", label: "企鹅号文章", shortLabel: "企鹅号",
+    loginCheckUrl: "https://om.qq.com/main/creation/article",
     editorUrl: "https://om.qq.com/main/creation/article",
     titleLimit: 30, accountKey: "qq", hosts: ["om.qq.com"], paths: ["^/main/creation/article(?:/|$)"],
     permission: "optional", stage: "beta",
@@ -24,6 +25,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "baijiahao-article", group: "article", label: "百家号文章", shortLabel: "百家号",
+    loginCheckUrl: "https://baijiahao.baidu.com/builder/rc/home",
     editorUrl: "https://baijiahao.baidu.com/builder/rc/edit?type=news",
     titleLimit: 30, accountKey: "baijiahao", hosts: ["baijiahao.baidu.com", "passport.baidu.com"], paths: ["^/builder/rc/edit\\?(?:.*&)?type=news(?:&|$)"],
     permission: "optional", stage: "beta",
@@ -31,6 +33,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "netease-article", group: "article", label: "网易号文章", shortLabel: "网易号",
+    loginCheckUrl: "https://mp.163.com/",
     editorUrl: "https://mp.163.com/#/article-publish",
     titleLimit: 30, accountKey: "netease", hosts: ["mp.163.com"], permission: "optional", stage: "beta",
     brand: { glyph: "网", color: "#e60026" }
@@ -54,6 +57,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
     // verified article-only route yet; zsxq-post should take a `paths` pattern
     // or this entry should gain one once the editor route is confirmed.
     id: "zsxq-article", group: "article", label: "知识星球文章", shortLabel: "知识星球",
+    loginCheckUrl: "https://wx.zsxq.com/",
     // The article editor has no route of its own; the marker keeps this tab
     // distinct from zsxq-post, which is the fallback for the host.
     editorUrl: "https://wx.zsxq.com/?wesight_target=article", paths: ["[?&]wesight_target=article(?:&|$)"],
@@ -62,6 +66,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "smzdm-article", group: "article", label: "什么值得买文章", shortLabel: "值得买",
+    loginCheckUrl: "https://post.smzdm.com/tougao/",
     editorUrl: "https://post.smzdm.com/tougao/",
     titleLimit: 30, accountKey: "smzdm", hosts: ["post.smzdm.com", "zhiyou.smzdm.com"], permission: "optional", stage: "beta",
     brand: { glyph: "值", color: "#e62828" }
@@ -80,6 +85,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "tonghuashun-article", group: "article", label: "同花顺号文章", shortLabel: "同花顺",
+    loginCheckUrl: "https://mp.10jqka.com.cn/creation-editor/editor/",
     editorUrl: "https://mp.10jqka.com.cn/creation-editor/editor/",
     titleLimit: 30, accountKey: "tonghuashun", hosts: ["mp.10jqka.com.cn", "upass.10jqka.com.cn"], permission: "optional", stage: "beta",
     brand: { glyph: "同", color: "#d82b2b" }
@@ -110,6 +116,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "autohome-article", group: "article", label: "汽车之家车家号文章", shortLabel: "车家号",
+    loginCheckUrl: "https://creator.autohome.com.cn/web/publish/long",
     editorUrl: "https://creator.autohome.com.cn/web/publish/long",
     titleLimit: 30, accountKey: "autohome", hosts: ["creator.autohome.com.cn", "account.autohome.com.cn"], paths: ["^/web/publish/long(?:/|$)"],
     permission: "optional", stage: "beta",
@@ -117,6 +124,7 @@ export const ARTICLE_MEDIA_PLATFORMS = [
   },
   {
     id: "dongchedi-article", group: "article", label: "懂车帝懂车号文章", shortLabel: "懂车号",
+    account: { url: "https://mp.dcdapp.com/motor/mp_index/api/user/info", name: "data.media.name", avatar: "data.media.https_avatar_url" },
     editorUrl: "https://mp.dcdapp.com/profile_v2/publish/article",
     titleLimit: 30, accountKey: "dongchedi", hosts: ["mp.dcdapp.com"], permission: "optional", stage: "beta",
     brand: { glyph: "懂", color: "#f5b800" }

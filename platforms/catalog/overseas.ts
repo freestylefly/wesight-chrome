@@ -9,6 +9,7 @@ export const OVERSEAS_PLATFORMS = [
   },
   {
     id: "linkedin-post", group: "post", label: "LinkedIn 动态", shortLabel: "LinkedIn", editorUrl: "https://www.linkedin.com/feed/",
+    loginCheckUrl: "https://www.linkedin.com/feed/",
     titleLimit: 3000, accountKey: "linkedin", hosts: ["www.linkedin.com"], permission: "optional", stage: "beta",
     media: { images: 9 }, textLimit: 3000, brand: { glyph: "in", color: "#0a66c2", caption: "在职业社交网络分享观点" }
   },
@@ -44,12 +45,14 @@ export const OVERSEAS_PLATFORMS = [
   },
   {
     id: "medium-article", group: "article", label: "Medium 文章", shortLabel: "Medium", editorUrl: "https://medium.com/new-story",
+    loginCheckUrl: "https://medium.com/new-story",
     titleLimit: 100, accountKey: "medium", hosts: ["medium.com"], permission: "optional", stage: "beta"
   },
   {
     // Substack posts are edited on <name>.substack.com; substack.com/settings lists
     // the user's publications. See platforms/overseas/substack-article.ts.
     id: "substack-article", group: "article", label: "Substack 文章", shortLabel: "Substack", editorUrl: "https://substack.com/settings",
+    loginCheckUrl: "https://substack.com/settings",
     titleLimit: 200, accountKey: "substack", hosts: ["substack.com"], paths: ["^/settings(?:/|$)", "^/publish/post(?:/|$)"],
     permission: "optional", stage: "beta"
   }

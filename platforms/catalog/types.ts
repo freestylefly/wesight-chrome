@@ -52,6 +52,12 @@ export interface PlatformDefinition {
   /**
    * Optional JSON "current user" probe the background runs with the user's
    * cookies. Paths are dot-separated. Missing or unexpected data reports "unknown".
+   * `loggedOut` lists response codes that positively mean "not signed in".
    */
-  account?: { url: string; name: string; avatar?: string }
+  account?: { url: string; name?: string; avatar?: string; loggedOut?: { path: string; values: readonly (string | number)[] } }
+  /**
+   * A read-only page that the site redirects to its login page when signed out
+   * (server-side). Used only to report "未登录" for platforms without a user probe.
+   */
+  loginCheckUrl?: string
 }

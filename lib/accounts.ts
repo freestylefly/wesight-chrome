@@ -3,6 +3,7 @@ import type { ArticlePlatformId, PlatformId } from "~types/protocol"
 import { readAccountPage } from "~lib/account-page"
 import { findPlatformDefinition, type PlatformDefinition } from "~platforms/catalog"
 import { platformsMissingPermission } from "~lib/optional-platforms"
+import { accountPlatformIds } from "~platforms/config"
 
 type Probe = () => Promise<AccountRecord>
 
@@ -200,6 +201,12 @@ export function parse51ctoAccount(html: string): AccountRecord {
 }
 
 const PROBES: Partial<Record<PlatformId, Probe>> = {
+  async "weixin-article"() {
+    const { body, url } = await getJson("https://mp.weixin.qq.com/")
+    if (typeof body === "string" && /\/cgi-bin\/home/.test(url)) return parseWeixinAccount(body)
+    // Signed out, the root serves the QR login page without redirecting.
+    return new URL(url).pathname === "/" ? LOGIN_REQUIRED : { state: "unknown" }
+  },
   async "51cto-article"() {
     const { body } = await getJson("https://blog.51cto.com/")
     return typeof body === "string" ? parse51ctoAccount(body) : { state: "unknown" }
@@ -262,9 +269,26 @@ function pathValue(value: unknown, path: string): unknown {
 /** Generic JSON probe declared in a platform's catalog entry. */
 export async function catalogProbe(probe: NonNullable<PlatformDefinition["account"]>): Promise<AccountRecord> {
   const { status, body } = await getJson(probe.url)
-  const name = text(pathValue(body, probe.name))
+  const name = probe.name ? text(pathValue(body, probe.name)) : undefined
   if (name) return loggedIn(name, probe.avatar ? text(pathValue(body, probe.avatar)) : undefined)
+  const code = probe.loggedOut ? pathValue(body, probe.loggedOut.path) : undefined
+  if (code !== undefined && probe.loggedOut?.values.some(value => String(value) === String(code))) return LOGIN_REQUIRED
   return status === 401 || status === 403 ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+const LOGIN_URL_PATTERN = /\/\/(?:passport|upass|accounts?|sso)\.|\/(?:login|signin|sign_in|sign-in|userAuth)(?:[./?#]|$)|\/uas\/login|\/m\/signin|\/login\.html/i
+
+/** Signed-out check: did the site redirect a member-only page to its login page? */
+export async function loginRedirectProbe(url: string): Promise<AccountRecord> {
+  const { url: finalUrl } = await getJson(url)
+  return finalUrl !== url && LOGIN_URL_PATTERN.test(finalUrl) ? LOGIN_REQUIRED : { state: "unknown" }
+}
+
+/** 微信公众号: the signed-in home page bootstraps `nick_name` and `head_img`; signed out it stays on the login page. */
+export function parseWeixinAccount(html: string): AccountRecord {
+  const name = text(/\bnick_name\s*:\s*["']([^"']+)["']/.exec(html)?.[1])
+  if (name) return loggedIn(name, text(/\bhead_img\s*:\s*["']([^"']+)["']/.exec(html)?.[1]))
+  return { state: "unknown" }
 }
 
 const pending = new Map<PlatformId, Promise<AccountRecord>>()
@@ -276,17 +300,33 @@ async function probe(platformId: PlatformId): Promise<AccountRecord> {
     const page = await (platformId === "jike-post" || platformId === "xiaohongshu" || platformId === "x-article" ? probeSessionPages(platformId) : probeOpenPages(platformId))
       .catch(() => ({ state: "unknown" } as AccountRecord))
     if (page.state !== "unknown") return { ...page, checkedAt: new Date().toISOString() }
-    const declared = findPlatformDefinition(platformId)?.account
-    const fallback = PROBES[platformId] ?? (declared ? () => catalogProbe(declared) : undefined)
+    const definition = findPlatformDefinition(platformId)
+    const declared = definition?.account
+    const loginCheck = definition?.loginCheckUrl
+    const fallback = PROBES[platformId]
+      ?? (declared ? () => catalogProbe(declared) : loginCheck ? () => loginRedirectProbe(loginCheck) : undefined)
     return { ...(fallback ? await fallback() : { state: "unknown" as const }), checkedAt: new Date().toISOString() }
   } catch {
     return { state: "unknown", checkedAt: new Date().toISOString() }
   }
 }
 
+function hasOwnProbe(platformId: PlatformId): boolean {
+  const definition = findPlatformDefinition(platformId)
+  return Boolean(PROBES[platformId] || PAGE_PATTERNS[platformId] || definition?.account || definition?.loginCheckUrl)
+}
+
+/** A platform that shares its account with another (e.g. 头条动态 and 头条号) reuses that platform's probe. */
+function probeSource(platformId: PlatformId): PlatformId {
+  if (hasOwnProbe(platformId)) return platformId
+  return accountPlatformIds(platformId).find(id => id !== platformId && hasOwnProbe(id)) ?? platformId
+}
+
 export function probeAccount(platformId: PlatformId): Promise<AccountRecord> {
   if (platformId === "weibo-post") return probeAccount("weibo-article")
   if (platformId === "x-post") return probeAccount("x-article")
+  const source = probeSource(platformId)
+  if (source !== platformId) return probeAccount(source)
   const active = pending.get(platformId)
   if (active) return active
   const result = probe(platformId).finally(() => pending.delete(platformId))

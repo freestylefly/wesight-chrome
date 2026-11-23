@@ -21,6 +21,30 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("browser account probes", () => {
+  const redirected = (url: string, body = "") => ({ status: 200, url, text: async () => body }) as unknown as Response
+  test("reports 未登录 when a member page redirects to the site's login page", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://account.cnblogs.com/signin?returnUrl=x"))
+    expect(await probeAccount("cnblogs-article")).toMatchObject({ state: "login_required" })
+    vi.mocked(fetch).mockResolvedValue(redirected("https://i.cnblogs.com/"))
+    expect(await probeAccount("cnblogs-article")).toMatchObject({ state: "unknown" })
+  })
+  test("shares the login check between platforms on one account", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://wx.zsxq.com/login"))
+    expect(await probeAccount("zsxq-post")).toMatchObject({ state: "login_required" })
+    expect(fetch).toHaveBeenCalledWith("https://wx.zsxq.com/", expect.anything())
+  })
+  test("reads the 公众号 account from the signed-in home page", async () => {
+    vi.mocked(fetch).mockResolvedValue(redirected("https://mp.weixin.qq.com/cgi-bin/home?t=home/index&token=1", `wx.cgiData = { nick_name: "向明", head_img: 'https://wx.qlogo.cn/a.png', user_name: "gh_x" }`))
+    expect(await probeAccount("weixin-article")).toMatchObject({ state: "logged_in", name: "向明", avatar: "https://wx.qlogo.cn/a.png" })
+    vi.mocked(fetch).mockResolvedValue(redirected("https://mp.weixin.qq.com/", "<html>login</html>"))
+    expect(await probeAccount("weixin-article")).toMatchObject({ state: "login_required" })
+  })
+  test("reads the 懂车号 media account and the 阿里云 signed-out code", async () => {
+    vi.mocked(fetch).mockResolvedValue(json({ status: 0, data: { media: { name: "向明", https_avatar_url: "https://example.com/d.png" }, user: { screen_name: "用户1" } } }))
+    expect(await probeAccount("dongchedi-article")).toMatchObject({ state: "logged_in", name: "向明" })
+    vi.mocked(fetch).mockResolvedValue(json({ code: "40001", message: "用户未登录或登录已失效", success: false }))
+    expect(await probeAccount("aliyun-article")).toMatchObject({ state: "login_required" })
+  })
   test("reads the 51CTO account from the server-rendered blog header", async () => {
     const html = `<script>var user_id = 1; var isLogin = 1;</script><div class="ins"> <a class="user-base" href="https://blog.51cto.com/u_1" target="_blank"> <img data-uid="1" src="https://ucenter.51cto.com/images/noavatar_middle.gif" /><span>mb6b03a4b480522</span> </a>`
     vi.mocked(fetch).mockResolvedValue(new Response(html))

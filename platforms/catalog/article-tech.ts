@@ -4,6 +4,7 @@ import type { PlatformDefinition } from "~platforms/catalog/types"
 export const ARTICLE_TECH_PLATFORMS = [
   {
     id: "cnblogs-article", group: "article", label: "博客园文章", shortLabel: "博客园", editorUrl: "https://i.cnblogs.com/articles/edit",
+    loginCheckUrl: "https://i.cnblogs.com/",
     titleLimit: 100, accountKey: "cnblogs", hosts: ["i.cnblogs.com", "account.cnblogs.com", "passport.cnblogs.com"], permission: "optional", stage: "beta",
     brand: { glyph: "博", color: "#1e5aa8" }
   },
@@ -20,11 +21,13 @@ export const ARTICLE_TECH_PLATFORMS = [
   },
   {
     id: "segmentfault-article", group: "article", label: "思否文章", shortLabel: "思否", editorUrl: "https://segmentfault.com/write",
+    loginCheckUrl: "https://segmentfault.com/user/settings",
     titleLimit: 100, accountKey: "segmentfault", hosts: ["segmentfault.com"], permission: "optional", stage: "beta",
     brand: { glyph: "思", color: "#009a61" }
   },
   {
     id: "aliyun-article", group: "article", label: "阿里云开发者社区", shortLabel: "阿里云", editorUrl: "https://developer.aliyun.com/article/new",
+    account: { url: "https://developer.aliyun.com/developer/api/my/user/getUser", loggedOut: { path: "code", values: ["40001"] } },
     titleLimit: 64, accountKey: "aliyun", hosts: ["developer.aliyun.com", "account.aliyun.com", "signin.aliyun.com", "passport.aliyun.com"], permission: "optional", stage: "beta",
     brand: { glyph: "阿", color: "#ff6a00" }
   },
@@ -45,11 +48,13 @@ export const ARTICLE_TECH_PLATFORMS = [
   },
   {
     id: "jianshu-article", group: "article", label: "简书", shortLabel: "简书", editorUrl: "https://www.jianshu.com/writer",
+    loginCheckUrl: "https://www.jianshu.com/writer",
     titleLimit: 100, accountKey: "jianshu", hosts: ["www.jianshu.com"], permission: "optional", stage: "beta",
     brand: { glyph: "简", color: "#ea6f5a" }
   },
   {
     id: "sspai-article", group: "article", label: "少数派", shortLabel: "少数派", editorUrl: "https://sspai.com/write",
+    loginCheckUrl: "https://sspai.com/write",
     titleLimit: 60, accountKey: "sspai", hosts: ["sspai.com"], permission: "optional", stage: "beta",
     brand: { glyph: "派", color: "#d71a1b" }
   },
