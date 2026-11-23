@@ -200,7 +200,23 @@ export function parse51ctoAccount(html: string): AccountRecord {
   return /\bvar\s+isLogin\s*=\s*0\s*;/.test(html) ? LOGIN_REQUIRED : { state: "unknown" }
 }
 
+/** 人人都是产品经理: the home page bootstraps `PURE = {..."user_id":"<uid>"...}` (0 when signed out). */
+export function parseWoshipmUserId(html: string): string | null | undefined {
+  const id = /"user_id"\s*:\s*"?(\d+)/.exec(html)?.[1]
+  if (id === undefined) return undefined
+  return id === "0" ? null : id
+}
+
 const PROBES: Partial<Record<PlatformId, Probe>> = {
+  async "woshipm-article"() {
+    const home = await getJson("https://www.woshipm.com/")
+    const uid = typeof home.body === "string" ? parseWoshipmUserId(home.body) : undefined
+    if (uid === null) return LOGIN_REQUIRED
+    if (!uid) return { state: "unknown" }
+    const { body } = await getJson(`https://www.woshipm.com/api2/user/profile?uid=${uid}`)
+    const user = record(record(record(body).RESULT).userInfoVo)
+    return text(user.nickName) ? loggedIn(text(user.nickName), text(user.avartar)) : { state: "unknown" }
+  },
   async "weixin-article"() {
     const { body, url } = await getJson("https://mp.weixin.qq.com/")
     if (typeof body === "string" && /\/cgi-bin\/home/.test(url)) return parseWeixinAccount(body)

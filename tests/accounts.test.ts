@@ -21,6 +21,13 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 describe("browser account probes", () => {
+  test("reads the 人人都是产品经理 account through the bootstrapped user id", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(`<script>var PURE = {"ajax_url":"x","user_id":"42"};</script>`))
+      .mockResolvedValueOnce(json({ CODE: 200, RESULT: { userInfoVo: { uid: 42, nickName: "向明", avartar: "https://example.com/w.png" } } }))
+    expect(await probeAccount("woshipm-article")).toMatchObject({ state: "logged_in", name: "向明", avatar: "https://example.com/w.png" })
+    expect(fetch).toHaveBeenLastCalledWith("https://www.woshipm.com/api2/user/profile?uid=42", expect.anything())
+  })
   const redirected = (url: string, body = "") => ({ status: 200, url, text: async () => body }) as unknown as Response
   test("reports 未登录 when a member page redirects to the site's login page", async () => {
     vi.mocked(fetch).mockResolvedValue(redirected("https://account.cnblogs.com/signin?returnUrl=x"))
