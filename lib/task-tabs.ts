@@ -87,6 +87,7 @@ export async function restoreTaskTabs(
 
     if (!tab?.id) {
       try {
+        await assertPlatformPermission(platformId, PLATFORM_CONFIG[platformId].label)
         tab = await chrome.tabs.create(createProperties(
           state.draftUrl || PLATFORM_CONFIG[platformId].editorUrl,
           windowId

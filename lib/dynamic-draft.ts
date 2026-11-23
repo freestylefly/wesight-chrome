@@ -48,6 +48,17 @@ export function dynamicVariant(draft: DynamicDraft, platformId: DynamicPlatformI
   return draft.mode === "per-platform" ? draft.variants[platformId] ?? shared : shared
 }
 
+/**
+ * Characters a post occupies on the platform: user-perceived characters, so an
+ * emoji counts once, plus the hashtags adapters append after the body.
+ */
+export function postTextLength(copy: Pick<DynamicCopy, "body" | "tags">): number {
+  const tags = copy.tags.map(tag => tag.replace(/^#+|#+$/g, "").trim()).filter(Boolean).map(tag => `#${tag}`).join(" ")
+  const text = [copy.body.trim(), tags].filter(Boolean).join("\n\n")
+  const Segmenter = (Intl as { Segmenter?: typeof Intl.Segmenter }).Segmenter
+  return Segmenter ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(text)).length : Array.from(text).length
+}
+
 export function getDynamicValidationErrors(draft: DynamicDraft, targets = draft.selected): string[] {
   const errors: string[] = []
   if (!targets.length) errors.push("请至少选择一个同步平台")
@@ -66,7 +77,7 @@ export function getDynamicValidationErrors(draft: DynamicDraft, targets = draft.
     const definition = platformDefinition(platformId)
     const imageLimit = definition.media?.images ?? 9
     if (platformId !== "x-post" && media.filter(item => item.kind === "image").length > imageLimit) errors.push(`${definition.shortLabel}当前最多同步 ${imageLimit} 张图片`)
-    if (platformId !== "x-post" && definition.textLimit && copy.body.trim().length > definition.textLimit) errors.push(`${definition.shortLabel}正文最多 ${definition.textLimit} 字`)
+    if (platformId !== "x-post" && definition.textLimit && postTextLength(copy) > definition.textLimit) errors.push(`${definition.shortLabel}正文最多 ${definition.textLimit} 字`)
     if (definition.media?.requiresMedia && !media.length) errors.push(`${definition.shortLabel}需要至少一张图片或一个视频`)
     if (platformId !== "x-post" && media.some(item => item.kind === "video") && !definition.media?.video) errors.push(`${definition.shortLabel}当前不支持同步视频`)
     if (!copy.body.trim() && !media.length && (platformId !== "x-post" || !buildXPostText(copy))) errors.push("请填写动态正文或添加附件")

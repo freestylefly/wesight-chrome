@@ -32,38 +32,53 @@ export async function requestPlatformPermissions(platformIds: readonly PlatformI
   return chrome.permissions.request({ origins })
 }
 
+/**
+ * Fail early when an optional platform lacks site access, and make sure its
+ * content script is registered before the caller opens a tab for it.
+ */
 export async function assertPlatformPermission(platformId: PlatformId, label: string): Promise<void> {
   if ((await platformsMissingPermission([platformId])).length) {
     throw new Error(`尚未授权访问${label}，请在 WeSight 发布中心勾选该平台并允许访问后重试`)
   }
+  if (findPlatformDefinition(platformId)?.permission === "optional") await syncOptionalContentScripts()
 }
 
-function staticPlatformScript(): string[] | null {
+function staticPlatformScript(): { js: string[]; matches: string[] } | null {
   const entry = chrome.runtime.getManifest().content_scripts?.find(script => script.matches?.includes(STATIC_SCRIPT_MARKER))
-  return entry?.js?.length ? entry.js : null
+  return entry?.js?.length ? { js: entry.js, matches: entry.matches ?? [] } : null
 }
 
-/**
- * Register the same platform content script for every optional platform the
- * user has granted. Called on startup and whenever permissions change.
- */
-export async function syncOptionalContentScripts(): Promise<void> {
-  const js = staticPlatformScript()
+async function registerOptionalContentScripts(): Promise<void> {
+  const script = staticPlatformScript()
+  // Hosts the manifest script already covers must not get a second copy,
+  // or both copies would answer PREPARE_DRAFT and fill the draft twice.
+  const covered = new Set(script?.matches ?? [])
   const granted: string[] = []
   for (const definition of PLATFORM_CATALOG as readonly PlatformDefinition[]) {
     if (definition.permission !== "optional") continue
     const origins = hostPatterns(definition)
-    if (await chrome.permissions.contains({ origins })) granted.push(...origins)
+    if (await chrome.permissions.contains({ origins })) granted.push(...origins.filter(origin => !covered.has(origin)))
   }
   const matches = [...new Set(granted)]
   const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [OPTIONAL_SCRIPT_ID] })
-  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [OPTIONAL_SCRIPT_ID] })
-  if (!js || !matches.length) return
-  await chrome.scripting.registerContentScripts([{
-    id: OPTIONAL_SCRIPT_ID,
-    js,
-    matches,
-    runAt: "document_idle",
-    persistAcrossSessions: true
-  }])
+  if (!script || !matches.length) {
+    if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [OPTIONAL_SCRIPT_ID] })
+    return
+  }
+  const registration = { id: OPTIONAL_SCRIPT_ID, js: script.js, matches, runAt: "document_idle" as const, persistAcrossSessions: true }
+  if (existing.length) await chrome.scripting.updateContentScripts([registration])
+  else await chrome.scripting.registerContentScripts([registration])
+}
+
+let syncing: Promise<void> = Promise.resolve()
+
+/**
+ * Register the platform content script for every granted optional platform.
+ * Runs on startup, on permission changes and before opening a task tab; calls
+ * are serialized so overlapping events never race on the same script id.
+ */
+export function syncOptionalContentScripts(): Promise<void> {
+  const next = syncing.catch(() => undefined).then(registerOptionalContentScripts)
+  syncing = next
+  return next
 }

@@ -206,7 +206,10 @@ export function createPostCnAdapter(spec: PostCnSpec): PlatformAdapter & { spec:
   async function waitForEditor(): Promise<TextControl | null> {
     let editor = await waitForVisible<TextControl>(spec.editor, spec.composerLabels?.length ? 1_500 : 12_000)
     if (editor || !spec.composerLabels?.length) return editor
-    findAction(spec.composerLabels)?.click()
+    // The opener lives on the page; a matching control inside an open composer
+    // (dialog or form) may be that composer's own submit button.
+    const opener = findAction(spec.composerLabels)
+    if (opener && !opener.closest("[role='dialog'], dialog, form, [aria-modal='true']")) opener.click()
     editor = await waitForVisible<TextControl>(spec.editor, 12_000)
     return editor
   }

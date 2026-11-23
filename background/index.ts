@@ -99,6 +99,19 @@ function mutateAccounts(update: (accounts: AccountStateMap) => void): Promise<Ac
   return written
 }
 
+// An adapter that keeps asking to open the same editor URL is being redirected
+// away from it (expired session, unavailable editor); stop instead of reloading forever.
+const EDITOR_REDIRECT_LIMIT = 2
+const editorRedirects = new Map<string, { url: string; count: number }>()
+
+function editorRedirectRepeated(taskId: string, platformId: PlatformId, url: string): boolean {
+  const key = `${taskId}:${platformId}`
+  const previous = editorRedirects.get(key)
+  const count = previous?.url === url ? previous.count + 1 : 1
+  editorRedirects.set(key, { url, count })
+  return count > EDITOR_REDIRECT_LIMIT
+}
+
 function assignAccount(accounts: AccountStateMap, platformId: PlatformId, account: AccountRecord): void {
   for (const id of accountPlatformIds(platformId)) {
     const previousTime = Date.parse(accounts[id].checkedAt ?? "")
@@ -730,6 +743,7 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       await openPublishCenter(sender.tab?.windowId)
       return true
     case "RETRY_PLATFORM":
+      editorRedirects.delete(`${message.taskId}:${message.platformId}`)
       await retryPlatform(message.taskId, message.platformId)
       return true
     case "OPEN_TASK_TABS":
@@ -770,6 +784,12 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
     }
     case "PLATFORM_RESULT": {
       const runtime = await ensureRuntime(message.taskId)
+      if (message.editorPending && message.draftUrl && editorRedirectRepeated(message.taskId, message.platformId, message.draftUrl)) {
+        const failure = `${PLATFORM_CONFIG[message.platformId].shortLabel}编辑页多次跳转失败，请手动打开编辑页后点重试`
+        await reportStatus(runtime, message.platformId, "failed", { tabId: sender.tab?.id, message: failure })
+        await writeLog("error", message.platformId, `${failure}：${message.draftUrl}`)
+        return true
+      }
       await updateAccount(message.platformId, "logged_in")
       const tabId = sender.tab?.id
       const currentUrl = message.platformId === "x-post" && tabId !== undefined
