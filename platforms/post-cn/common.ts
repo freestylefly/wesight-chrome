@@ -1,3 +1,4 @@
+import { noteSelector } from "~lib/page-trace"
 import { postAssetFile, postVideoAsset } from "~lib/post-media"
 import type { POST_CN_PLATFORMS } from "~platforms/catalog/post-cn"
 import { PLATFORM_CONFIG } from "~platforms/config"
@@ -81,7 +82,10 @@ export function isFinalAction(element: Element): boolean {
 function firstVisible<T extends Element>(selectors: readonly string[]): T | null {
   for (const selector of selectors) {
     const match = Array.from(document.querySelectorAll<T>(selector)).find(visible)
-    if (match) return match
+    if (match) {
+      noteSelector(selector)
+      return match
+    }
   }
   return null
 }

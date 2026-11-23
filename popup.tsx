@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ExternalLink, LayoutDashboard, LogIn, LoaderCircle, UserRound, RefreshCw, Unplug } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, LayoutDashboard, LogIn, LoaderCircle, UserRound, RefreshCw, Stethoscope, Unplug } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import logo from "data-base64:~assets/icon.png"
@@ -148,6 +148,9 @@ function App() {
     {error && <div className="error-note">{error}</div>}
     <footer>
       <span>Obsidian 内容通过本机通道导入，素材同步到你选择的平台</span>
+      <button className="diagnostics-link" onClick={() => {
+        void request({ type: "OPEN_DIAGNOSTICS" }).then(() => window.close()).catch(reason => setError(String(reason)))
+      }}><Stethoscope />诊断</button>
       <a href="https://github.com/freestylefly/wesight-chrome/blob/main/PRIVACY.md" target="_blank" rel="noreferrer">隐私政策</a>
     </footer>
   </main>

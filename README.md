@@ -82,7 +82,7 @@ pnpm package
 - 任务令牌有效期为 10 分钟，只保存在浏览器会话中。
 - 发布中心分别保留一份文章草稿和一份动态草稿，正文、图片及视频存放在扩展自己的 IndexedDB 中；导入新内容时替换对应模式的草稿。
 - 扩展不会点击发布按钮，也不会调用平台正式发布接口。
-- 诊断日志最多保留 100 条，并对令牌及密钥字段脱敏。
+- 诊断记录只保存在本机，最多保留 600 条；不记录文章正文、标题、图片、Cookie、令牌和网址参数，账号昵称只记是否读到。诊断包由用户手动导出，扩展不会自动上传。
 
 平台页面结构更新后，单个平台可能需要更新适配器。失败状态会保留在 Popup 和 Obsidian 任务面板中，用户可以登录后重试。
 
@@ -91,4 +91,5 @@ pnpm package
 - [隐私政策](PRIVACY.md)：数据用途、接收方、保存期限及删除方式。
 - [权限说明](PERMISSIONS.md)：各浏览器权限与网站访问权限的用途。
 - 功能反馈：[GitHub Issues](https://github.com/freestylefly/wesight-chrome/issues)。隐私及账号数据请求可联系 [canghe0818@gmail.com](mailto:canghe0818@gmail.com)。
+- [1.2.0 更新说明](docs/releases/1.2.0.md)：新增诊断页、平台自检和诊断包导出。
 - [1.1.1 更新说明](docs/releases/1.1.1.md)：Chrome Web Store 上架准备及权限清理。

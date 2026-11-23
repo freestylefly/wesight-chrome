@@ -1,5 +1,6 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import { beginPageTrace, endPageTrace, installErrorCapture, pageEvent, sendDiagnostics, traceStep } from "~lib/page-trace"
 import { showReadyBanner } from "~lib/ready-banner"
 import { createUploadProgress, uploadAssetsForPlatform, type UploadProgressController } from "~lib/upload-progress"
 import { isXPlatform, platformFromUrl, sameAccountPlatform } from "~platforms/config"
@@ -72,8 +73,14 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       return true
     }
     if (!message.task.targets.includes(platformId)) throw new Error("当前任务未选择此平台")
-    const account = await adapter.detectAccount()
+    beginPageTrace(platformId, message.task)
+    const account = await adapter.detectAccount().catch(error => {
+      sendDiagnostics([endPageTrace("failed", { error })])
+      throw error
+    })
+    traceStep(`页面登录检测：${account.loggedIn ? "已登录" : "未登录"}${account.loggedIn ? `，昵称${account.name ? "已读到" : "未读到"}` : ""}`)
     if (!account.loggedIn) {
+      sendDiagnostics([endPageTrace("login_required")])
       await send({
         type: "PLATFORM_LOGIN_REQUIRED",
         taskId: message.task.taskId,
@@ -88,11 +95,24 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       : null
     let progressUpdates = Promise.resolve()
     let uploadFailed = false
+    const uploadEvent = (asset: PublishAssetV1, outcome: "success" | "skipped" | "failed") => {
+      traceStep(`图片上传 ${outcome}：${asset.mimeType}，${asset.size} 字节`)
+      sendDiagnostics([pageEvent(outcome === "failed" ? "warn" : "info", "upload", platformId, `图片上传：${outcome}`, {
+        outcome, mimeType: asset.mimeType, size: asset.size
+      })])
+    }
     const assetProgress = {
-      complete: (_asset: PublishAssetV1) => uploadProgress?.complete(),
-      skip: (_asset: PublishAssetV1) => uploadProgress?.skip(),
+      complete: (asset: PublishAssetV1) => {
+        uploadEvent(asset, "success")
+        uploadProgress?.complete()
+      },
+      skip: (asset: PublishAssetV1) => {
+        uploadEvent(asset, "skipped")
+        uploadProgress?.skip()
+      },
       fail: (asset: PublishAssetV1) => {
         uploadFailed = true
+        uploadEvent(asset, "failed")
         uploadProgress?.fail(asset.fileName)
       }
     }
@@ -100,6 +120,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       const result = await adapter.prepareDraft({
         task: message.task,
         reportProgress: text => {
+          traceStep(`进度：${text}`)
           uploadProgress?.stage(text)
           progressUpdates = progressUpdates.then(() => send({ type: "PLATFORM_PROGRESS", taskId: message.task.taskId, platformId, message: text })).then(() => undefined).catch(() => undefined)
         },
@@ -145,6 +166,8 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
         }
       })
       await progressUpdates
+      traceStep(`填入完成${result.draftUrl ? `，草稿页 ${result.draftUrl}` : ""}`)
+      sendDiagnostics([endPageTrace(result.editorPending ? "editor_pending" : "ready", { warnings: result.warnings })])
       if (result.editorPending) uploadProgress?.remove()
       else showReadyBanner(result.warnings)
       await send({
@@ -158,6 +181,7 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
       return result
     } catch (error) {
       await progressUpdates
+      sendDiagnostics([endPageTrace("failed", { error })])
       const errorMessage = error instanceof Error ? error.message : String(error)
       if (!uploadFailed) uploadProgress?.remove()
       await send({ type: "PLATFORM_FAILED", taskId: message.task.taskId, platformId, message: errorMessage })
@@ -171,6 +195,8 @@ chrome.runtime.onMessage.addListener((message: ContentRequest, _sender, sendResp
     } satisfies ExtensionResponse))
   return true
 })
+
+installErrorCapture("content")
 
 // Register the receiver before announcing that the page is ready. The background
 // responds to PLATFORM_PAGE_READY immediately with PREPARE_DRAFT, so announcing

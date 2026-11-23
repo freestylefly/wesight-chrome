@@ -36,6 +36,7 @@ import "./publish.css"
 import "./canghe-green.css"
 
 import { normalizeDraft, xImageWarning, xUnsupportedImageWarning } from "~lib/article-preparation"
+import { installErrorCapture } from "~lib/page-trace"
 import { membershipCheckoutUrl } from "~lib/cloud-auth"
 import { cangheGreenPreview } from "~lib/preview-theme"
 
@@ -56,6 +57,8 @@ import { findPlatformDefinition } from "~platforms/catalog"
 import { PLATFORM_CONFIG } from "~platforms/config"
 import type { ExtensionRequest, ExtensionResponse, PublishCenterState } from "~types/messages"
 import { ARTICLE_PLATFORM_IDS, type ArticlePlatformId, type PlatformId, type PlatformTaskState } from "~types/protocol"
+
+installErrorCapture("publish-center")
 
 // Core article brands; newer platforms take theirs from the catalog.
 const PLATFORM_BRAND: Partial<Record<ArticlePlatformId, { glyph: string; color: string }>> = {

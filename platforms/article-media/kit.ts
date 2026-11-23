@@ -1,3 +1,4 @@
+import { noteSelector } from "~lib/page-trace"
 /**
  * Shared DOM-level draft filler for 国内自媒体号 article editors (批 1b).
  *
@@ -109,7 +110,10 @@ function first<T extends Element>(selectors: readonly string[], root: ParentNode
     }
     const found = candidates.find(candidate => !isHidden(candidate)
       && !(exclude && (exclude === candidate || exclude.contains(candidate) || candidate.contains(exclude))))
-    if (found) return found
+    if (found) {
+      noteSelector(selector)
+      return found
+    }
   }
   return null
 }

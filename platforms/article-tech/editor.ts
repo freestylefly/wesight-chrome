@@ -1,4 +1,5 @@
 import { fillEditable, fillTextControl } from "~platforms/dom"
+import { noteSelector } from "~lib/page-trace"
 
 /**
  * Editor helpers shared by the 批 1a tech-community adapters. These sites use a
@@ -72,14 +73,20 @@ export function findEditor(candidates: readonly EditorCandidate[]): FoundEditor 
     if (candidate.frame) {
       for (const frame of Array.from(document.querySelectorAll<HTMLIFrameElement>(candidate.selector))) {
         const body = editableBody(frame)
-        if (body) return { element: body, display: body, mode: candidate.mode, kind: "contenteditable" }
+        if (body) {
+          noteSelector(candidate.selector, "正文编辑器(iframe)")
+          return { element: body, display: body, mode: candidate.mode, kind: "contenteditable" }
+        }
       }
       continue
     }
     for (const element of Array.from(document.querySelectorAll<HTMLElement>(candidate.selector))) {
       if (hiddenByAttribute(element) && !element.closest(".CodeMirror")) continue
       const found = classify(element, candidate.mode)
-      if (found) return found
+      if (found) {
+        noteSelector(candidate.selector, `正文编辑器(${found.kind})`)
+        return found
+      }
     }
   }
   return null

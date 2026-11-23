@@ -2,7 +2,21 @@ import { xPublicScriptUrl } from "~lib/x-article-api"
 import { normalizeDraft } from "~lib/article-preparation"
 import { completeWeSightLogin, loginPending, publishAuthState, signOutWeSight, startWeSightLogin, verifyCloudIdentity } from "~lib/cloud-auth"
 import type { WeSightAuthState } from "~types/auth"
-import { probeAccount } from "~lib/accounts"
+import { probeAccount, probeAccountDetailed } from "~lib/accounts"
+import {
+  appendEvents,
+  clearEvents,
+  errorData,
+  normalizeIncomingEvent,
+  readEvents,
+  recordDiagnostic,
+  selfCheckRow,
+  SELF_CHECK_KEY,
+  setSensitiveTerms,
+  type DiagnosticEvent,
+  type SelfCheckReport
+} from "~lib/diagnostics"
+import { collectEnvironment, type DiagnosticEnvironment } from "~lib/diagnostics-env"
 import { fetchAccess, fetchAsset, fetchTask, getPairing, pairWithBridge, postTaskEvent } from "~lib/bridge-client"
 import { assertBridgeSender, BRIDGE_HEARTBEAT_ALARM, BridgeConnectionMonitor } from "~lib/bridge-connection"
 import { shouldMirrorBridgeEvent } from "~lib/bridge-event-policy"
@@ -97,6 +111,32 @@ function mutateAccounts(update: (accounts: AccountStateMap) => void): Promise<Ac
   })
   accountWrites = written.catch(() => undefined)
   return written
+}
+
+// ——— Diagnostics: draft timeline per task platform ———
+const draftClocks = new Map<string, number>()
+const retryCounts = new Map<string, number>()
+
+function traceStatus(
+  task: PublishTaskV1,
+  platformId: PlatformId,
+  status: PlatformTaskStatus,
+  values: Partial<{ message: string; draftUrl: string; warnings: string[] }>
+): void {
+  setSensitiveTerms([task.article.title, ...task.article.tags, ...task.assets.map(asset => asset.fileName), task.source?.vaultPath])
+  const key = `${task.taskId}:${platformId}`
+  if (status === "opening" && !draftClocks.has(key)) draftClocks.set(key, Date.now())
+  const started = draftClocks.get(key)
+  const level = status === "failed" ? "error" : status === "login_required" || values.warnings?.length ? "warn" : "info"
+  void recordDiagnostic(level, "draft", platformId, `状态：${status}`, {
+    status,
+    message: values.message,
+    sinceOpenMs: started === undefined ? undefined : Date.now() - started,
+    draftUrl: values.draftUrl,
+    warnings: values.warnings?.length ? values.warnings : undefined,
+    retries: retryCounts.get(key)
+  })
+  if (status === "ready" || status === "cancelled") draftClocks.delete(key)
 }
 
 // An adapter that keeps asking to open the same editor URL is being redirected
@@ -259,6 +299,7 @@ async function reportStatus(
   values: Partial<{ message: string; tabId: number; draftUrl: string; warnings: string[] }> = {}
 ): Promise<void> {
   await setPlatformStatus(runtime.task.taskId, platformId, status, values)
+  traceStatus(runtime.task, platformId, status, values)
   const event: PlatformTaskEventV1 = {
     protocolVersion: PROTOCOL_VERSION,
     taskId: runtime.task.taskId,
@@ -657,6 +698,9 @@ async function retryPlatform(taskId: string, platformId: PlatformId): Promise<vo
   const lastRetry = recentRetries.get(retryKey)
   if (lastRetry !== undefined && Date.now() - lastRetry < RETRY_DEDUP_MS) return
   recentRetries.set(retryKey, Date.now())
+  retryCounts.set(retryKey, (retryCounts.get(retryKey) ?? 0) + 1)
+  draftClocks.delete(retryKey)
+  void recordDiagnostic("info", "event", platformId, `重试第 ${retryCounts.get(retryKey)} 次`)
   const { auth } = await currentAccess(true)
   if (!auth.user) throw new Error("请先登录 WeSight 后重试")
   const runtime = await ensureRuntime(taskId)
@@ -666,6 +710,7 @@ async function retryPlatform(taskId: string, platformId: PlatformId): Promise<vo
   try {
     await assertPlatformPermission(platformId, PLATFORM_CONFIG[platformId].label)
   } catch (error) {
+    void recordDiagnostic("warn", "event", platformId, "站点授权缺失，重试中止", { permission: error instanceof PlatformPermissionError })
     await reportStatus(runtime, platformId, "failed", { message: error instanceof Error ? error.message : String(error) })
     throw error
   }
@@ -738,7 +783,7 @@ async function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.MessageSender): Promise<unknown> {
-  if (["WESIGHT_LOGIN", "WESIGHT_LOGOUT", "START_COMPOSE_SYNC", "START_DYNAMIC_SYNC", "GET_PUBLISH_STATE", "OPEN_PLATFORM_LOGIN"].includes(message.type)
+  if (["WESIGHT_LOGIN", "WESIGHT_LOGOUT", "START_COMPOSE_SYNC", "START_DYNAMIC_SYNC", "GET_PUBLISH_STATE", "OPEN_PLATFORM_LOGIN", "GET_DIAGNOSTICS", "RUN_SELF_CHECK", "CLEAR_DIAGNOSTICS"].includes(message.type)
     && !sender.url?.startsWith(chrome.runtime.getURL(""))) throw new Error("请求来源无效")
   switch (message.type) {
     case "CONNECT_BRIDGE": {
@@ -833,6 +878,11 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       }
       const runtime = await ensureRuntime(summary.taskId)
       if (platformId === "xiaohongshu" && !runtime.task.media?.videoAssetId) return false
+      const opened = draftClocks.get(`${summary.taskId}:${platformId}`)
+      void recordDiagnostic("info", "draft", platformId, "页面脚本就绪", {
+        pageUrl: sender.url ?? message.url,
+        sinceOpenMs: opened === undefined ? undefined : Date.now() - opened
+      })
       await sendPrepare(tabId, runtime, platformId)
       return true
     }
@@ -841,7 +891,11 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       if (message.editorPending && message.draftUrl && editorRedirectRepeated(message.taskId, message.platformId, message.draftUrl)) {
         const failure = `${PLATFORM_CONFIG[message.platformId].shortLabel}编辑页多次跳转失败，请手动打开编辑页后点重试`
         await reportStatus(runtime, message.platformId, "failed", { tabId: sender.tab?.id, message: failure })
-        await writeLog("error", message.platformId, `${failure}：${message.draftUrl}`)
+        await recordDiagnostic("error", "event", message.platformId, "编辑页重定向循环", {
+          draftUrl: message.draftUrl,
+          pageUrl: sender.tab?.url,
+          limit: EDITOR_REDIRECT_LIMIT
+        })
         return true
       }
       await updateAccount(message.platformId, "logged_in")
@@ -1035,8 +1089,70 @@ async function handleMessage(message: ExtensionRequest, sender: chrome.runtime.M
       }
       return url
     }
+    case "DIAGNOSTIC_EVENTS": {
+      if (sender.id !== chrome.runtime.id || !Array.isArray(message.events)) return false
+      const events = message.events.slice(0, 50).map(normalizeIncomingEvent).filter((event): event is DiagnosticEvent => Boolean(event))
+      await appendEvents(events)
+      return true
+    }
+    case "GET_DIAGNOSTICS": {
+      const report = await chrome.storage.local.get(SELF_CHECK_KEY)
+      return {
+        environment: await diagnosticEnvironment(),
+        selfCheck: (report[SELF_CHECK_KEY] as SelfCheckReport | undefined) ?? null,
+        events: await readEvents()
+      }
+    }
+    case "RUN_SELF_CHECK":
+      return runSelfCheck()
+    case "CLEAR_DIAGNOSTICS":
+      await clearEvents()
+      return true
+    case "OPEN_DIAGNOSTICS":
+      await chrome.tabs.create({ url: chrome.runtime.getURL("tabs/diagnostics.html") })
+      return true
   }
 }
+
+async function diagnosticEnvironment(): Promise<DiagnosticEnvironment> {
+  const { access, connected, auth } = await currentAccess(false)
+  const billing = access?.billing
+  return collectEnvironment({
+    paired: Boolean(await getPairing()),
+    connected,
+    signedIn: Boolean(auth.user),
+    source: auth.source,
+    membership: access ? `${access.state}${billing ? `，会员${billing.active ? "有效" : "无效"}` : ""}` : "unknown"
+  })
+}
+
+async function runSelfCheck(): Promise<SelfCheckReport> {
+  const started = Date.now()
+  const rows = await mapLimited([...PLATFORM_IDS], 4, async platformId => {
+    const begin = Date.now()
+    const { account, trace } = await probeAccountDetailed(platformId)
+    return selfCheckRow(platformId, PLATFORM_CONFIG[platformId].label, account, trace, Date.now() - begin)
+  })
+  const report: SelfCheckReport = { at: new Date().toISOString(), durationMs: Date.now() - started, rows }
+  await chrome.storage.local.set({ [SELF_CHECK_KEY]: report })
+  await recordDiagnostic("info", "login", "self-check", "平台自检完成", {
+    total: rows.length,
+    loggedIn: rows.filter(row => row.result === "logged_in").length,
+    loginRequired: rows.filter(row => row.result === "login_required").length,
+    permissionMissing: rows.filter(row => row.result === "permission_missing").length,
+    unknown: rows.filter(row => row.result === "unknown").length
+  })
+  return report
+}
+
+// Uncaught errors in the service worker itself.
+self.addEventListener("error", event => {
+  void recordDiagnostic("error", "error", "background", `未捕获异常：${event.message}`, errorData(event.error))
+})
+self.addEventListener("unhandledrejection", event => {
+  const reason: unknown = event.reason
+  void recordDiagnostic("error", "error", "background", `未处理的 Promise 拒绝：${reason instanceof Error ? reason.message : String(reason)}`, errorData(reason))
+})
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, sender, sendResponse) => {
   void handleMessage(message, sender)
