@@ -117,12 +117,16 @@ export function readAccountPage(platformId: PlatformId): AccountRecord {
   }
   if ((platformId === "x-article" || platformId === "x-post") && ["x.com", "twitter.com"].includes(host)) {
     const profile = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]')
-    if (!profile || !visible(profile)) {
+    const link = document.querySelector('a[data-testid="AppTabBar_Profile_Link"]')
+    if ((!profile || !visible(profile)) && (!link || !visible(link))) {
       const login = document.querySelector('[data-testid="loginButton"]')
       return login && visible(login) ? { state: "login_required" } : unknown
     }
-    const name = Array.from(profile.querySelectorAll("span"), span => span.textContent?.trim()).find(value => /^@[\w]+$/.test(value ?? ""))
-    return name ? { state: "logged_in", name: name.slice(1) } : unknown
+    const text = Array.from(profile?.querySelectorAll("span") ?? [], span => span.textContent?.trim()).find(value => /^@[\w]+$/.test(value ?? ""))?.slice(1)
+    const avatar = /^UserAvatar-Container-(\w+)$/.exec(profile?.querySelector('[data-testid^="UserAvatar-Container-"]')?.getAttribute("data-testid") ?? "")?.[1]
+    const href = /^\/(\w+)\/?$/.exec(link?.getAttribute("href") ?? "")?.[1]
+    const name = text ?? avatar ?? href
+    return name ? { state: "logged_in", name } : unknown
   }
   return unknown
 }

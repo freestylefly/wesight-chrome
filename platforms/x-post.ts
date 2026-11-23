@@ -4,7 +4,7 @@ import { buildXPostText, supportedXPostImages, X_POST_IMAGE_BYTES, X_POST_IMAGE_
 import { attachXPostNativeImages } from "~lib/x-post-native-media"
 import { prepareXPostNativeText } from "~lib/x-post-native-text"
 import { PLATFORM_CONFIG } from "~platforms/config"
-import { loginPageDetected } from "~platforms/dom"
+import { loginPageDetected, xAccountHandle } from "~platforms/dom"
 import type { PlatformAdapter, PrepareDraftContext, PrepareDraftResult } from "~platforms/types"
 import type { PublishAssetV1 } from "~types/protocol"
 
@@ -19,17 +19,11 @@ interface Checkpoint {
 }
 const runs = new Map<string, Promise<PrepareDraftResult>>()
 
-function accountName(): string | undefined {
-  const account = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]')
-  return Array.from(account?.querySelectorAll("span") ?? [])
-    .map(span => span.textContent?.trim()).find(text => /^@[\w]+$/.test(text ?? ""))?.slice(1)
-}
-
 async function detectAccount() {
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
     if (loginPageDetected() || document.querySelector('[data-testid="loginButton"]')) return { loggedIn: false, message: "请先登录 X" }
-    const name = accountName()
+    const name = xAccountHandle()
     if (name) return { loggedIn: true, name }
     await new Promise(resolve => setTimeout(resolve, 200))
   }
@@ -86,7 +80,7 @@ async function prepare(context: PrepareDraftContext): Promise<PrepareDraftResult
   stage(`正在把 ${plan.images.length} 张图片交给 X 上传`)
   const files: File[] = []
   for (const asset of plan.images) files.push(await imageFile(context, asset))
-  if (accountName()?.toLowerCase() !== state.account) throw new Error("X 当前账号已改变，请切回原账号后重试")
+  if (xAccountHandle()?.toLowerCase() !== state.account) throw new Error("X 当前账号已改变，请切回原账号后重试")
   const attached = await attachXPostNativeImages({ taskId: context.task.taskId, files, requireEmptyText: !text, onHidden })
   for (const asset of plan.images) context.uploadProgress?.complete(asset)
   return {
